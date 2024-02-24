@@ -72,7 +72,6 @@ export function activate(context: vscode.ExtensionContext) {
 			if (!fs.existsSync(curFilePath)) {
 				continue;
 			}
-			
 
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
 			const tempDir = os.tmpdir();
@@ -81,9 +80,19 @@ export function activate(context: vscode.ExtensionContext) {
 			const width = Math.floor(fontSize * 1.2);
 			const height = Math.floor(fontSize * 1.2);
 
+			const hoverMessage: vscode.MarkdownString = new vscode.MarkdownString();
+			hoverMessage.isTrusted = true;
+			hoverMessage.supportThemeIcons = true;
+			hoverMessage.supportHtml = true;
+
 			fs.mkdirSync(path.dirname(thumPath), {
 				recursive: true,
 			});
+
+			const sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata().catch((error)=>{
+				console.error(error);
+			});
+
 			await sharp(fs.readFileSync(curFilePath))
 				.resize(width, height, {
 					fit: sharp.fit.inside,
@@ -93,7 +102,18 @@ export function activate(context: vscode.ExtensionContext) {
 					console.error(error);
 				});
 			if (fs.existsSync(thumPath)) {
+				hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
+				hoverMessage.appendText("\n");
+				if (sharpMetadata!=null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
+					hoverMessage.appendText(`width:${sharpMetadata.width},`);
+					hoverMessage.appendText("\n");
+					hoverMessage.appendText(`height:${sharpMetadata.height},`);
+					hoverMessage.appendText("\n");
+				}
+				hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
+				hoverMessage.appendText("\n");
 				const decoration = {
+					hoverMessage: hoverMessage,
 					range: new vscode.Range(startPos, endPos), renderOptions: {
 						light: {
 							before: {
@@ -125,7 +145,8 @@ export function activate(context: vscode.ExtensionContext) {
 				};
 				imageDecorationOptions.push(decoration);
 			} else {
-				const decoration = { range: new vscode.Range(startPos, endPos), };
+				hoverMessage.appendMarkdown("$(extensions-warning-message)file not found!");
+				const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
 				imageDecorationOptions.push(decoration);
 			}
 		}
