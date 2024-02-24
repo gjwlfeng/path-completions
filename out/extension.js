@@ -72,63 +72,74 @@ function activate(context) {
             fs.mkdirSync(path.dirname(thumPath), {
                 recursive: true,
             });
-            const sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata().catch((error) => {
-                console.error(error);
-            });
-            await sharp(fs.readFileSync(curFilePath))
-                .resize(width, height, {
-                fit: sharp.fit.inside,
-            })
-                .webp()
-                .toFile(thumPath).catch((error) => {
-                console.error(error);
-            });
+            let sharpMetadata;
+            try {
+                sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
+                // eslint-disable-next-line no-empty
+            }
+            catch (error) { }
+            try {
+                await sharp(fs.readFileSync(curFilePath))
+                    .resize(width, height, {
+                    fit: sharp.fit.inside,
+                })
+                    .webp()
+                    .toFile(thumPath);
+                // eslint-disable-next-line no-empty
+            }
+            catch (error) { }
+            hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
+            hoverMessage.appendText("\n");
             if (fs.existsSync(thumPath)) {
-                hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
-                hoverMessage.appendText("\n");
-                if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
-                    hoverMessage.appendText(`width:${sharpMetadata.width},`);
+                const thumPathStat = fs.statSync(thumPath);
+                if (thumPathStat.isFile()) {
+                    if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
+                        hoverMessage.appendText(`width:${sharpMetadata.width},`);
+                        hoverMessage.appendText("\n");
+                        hoverMessage.appendText(`height:${sharpMetadata.height},`);
+                        hoverMessage.appendText("\n");
+                    }
+                    hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
                     hoverMessage.appendText("\n");
-                    hoverMessage.appendText(`height:${sharpMetadata.height},`);
-                    hoverMessage.appendText("\n");
-                }
-                hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
-                hoverMessage.appendText("\n");
-                const decoration = {
-                    hoverMessage: hoverMessage,
-                    range: new vscode.Range(startPos, endPos), renderOptions: {
-                        light: {
-                            before: {
-                                contentIconPath: vscode.Uri.file(thumPath),
-                                //border: '2px solid green',
-                                margin: '0px 4px 0px 0px',
-                                borderWidth: '1px',
-                                borderStyle: 'solid',
-                                width: `${fontSize + 4}px`,
-                                height: `${fontSize + 4}px`,
-                                borderColor: 'darkblue',
-                                backgroundColor: 'darkblue',
-                            }
-                        },
-                        dark: {
-                            before: {
-                                contentIconPath: vscode.Uri.file(thumPath),
-                                //border: '2px solid green',
-                                margin: '0px 4px 0px 0px',
-                                borderWidth: '1px',
-                                borderStyle: 'solid',
-                                width: `${fontSize + 4}px`,
-                                height: `${fontSize + 4}px`,
-                                borderColor: 'darkblue',
-                                backgroundColor: 'darkblue',
+                    const decoration = {
+                        hoverMessage: hoverMessage,
+                        range: new vscode.Range(startPos, endPos), renderOptions: {
+                            light: {
+                                before: {
+                                    contentIconPath: vscode.Uri.file(thumPath),
+                                    //border: '2px solid green',
+                                    margin: '0px 4px 0px 0px',
+                                    borderWidth: '1px',
+                                    borderStyle: 'solid',
+                                    width: `${fontSize + 4}px`,
+                                    height: `${fontSize + 4}px`,
+                                    borderColor: 'darkblue',
+                                    backgroundColor: 'darkblue',
+                                }
+                            },
+                            dark: {
+                                before: {
+                                    contentIconPath: vscode.Uri.file(thumPath),
+                                    //border: '2px solid green',
+                                    margin: '0px 4px 0px 0px',
+                                    borderWidth: '1px',
+                                    borderStyle: 'solid',
+                                    width: `${fontSize + 4}px`,
+                                    height: `${fontSize + 4}px`,
+                                    borderColor: 'darkblue',
+                                    backgroundColor: 'darkblue',
+                                }
                             }
                         }
-                    }
-                };
-                imageDecorationOptions.push(decoration);
+                    };
+                    imageDecorationOptions.push(decoration);
+                }
+                else {
+                    const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
+                    imageDecorationOptions.push(decoration);
+                }
             }
             else {
-                hoverMessage.appendMarkdown("$(extensions-warning-message)file not found!");
                 const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
                 imageDecorationOptions.push(decoration);
             }
