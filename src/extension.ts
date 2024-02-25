@@ -94,7 +94,6 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.appendText("\n");
 
 			const isExistThum = fs.existsSync(thumPath);
-			const isFile = fs.statSync(thumPath).isFile();
 
 			const fileContent = fs.readFileSync(curFilePath);
 			const wordArray = CryptoJS.lib.WordArray.create(fileContent);
@@ -102,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const oldMd5 = fileMd5Map.get(curFilePath);
 
-			if (fileMD5 !== oldMd5 || !isExistThum || !isFile) {
+			if (fileMD5 !== oldMd5 || !isExistThum) {
 				if (isExistThum) {
 					fs.unlinkSync(thumPath);
 				} else {
@@ -155,7 +154,7 @@ export function activate(context: vscode.ExtensionContext) {
 									borderStyle: 'solid',
 									width: `${fontSize + 4}px`,
 									height: `${fontSize + 4}px`,
-									borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
 									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									// borderColor: 'darkblue',
 									// backgroundColor: 'darkblue',
@@ -170,7 +169,7 @@ export function activate(context: vscode.ExtensionContext) {
 									borderStyle: 'solid',
 									width: `${fontSize + 4}px`,
 									height: `${fontSize + 4}px`,
-									borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
 									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									// borderColor: 'darkblue',
 									// backgroundColor: 'darkblue',
