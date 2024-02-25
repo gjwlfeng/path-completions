@@ -58,9 +58,9 @@ function activate(context) {
                 continue;
             }
             let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
-            if (!fs.existsSync(curFilePath)) {
+            if (!fs.existsSync(curFilePath) && fs.statSync(curFilePath).isFile()) {
                 curFilePath = match[1];
-                if (!fs.existsSync(curFilePath)) {
+                if (!fs.existsSync(curFilePath) && fs.statSync(curFilePath).isFile()) {
                     continue;
                 }
             }
@@ -133,7 +133,7 @@ function activate(context) {
                                     borderStyle: 'solid',
                                     width: `${fontSize + 4}px`,
                                     height: `${fontSize + 4}px`,
-                                    borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+                                    borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
                                     backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
                                     // borderColor: 'darkblue',
                                     // backgroundColor: 'darkblue',
@@ -148,7 +148,7 @@ function activate(context) {
                                     borderStyle: 'solid',
                                     width: `${fontSize + 4}px`,
                                     height: `${fontSize + 4}px`,
-                                    borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+                                    borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
                                     backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
                                     // borderColor: 'darkblue',
                                     // backgroundColor: 'darkblue',
@@ -241,8 +241,8 @@ function activate(context) {
     const pathProvider = vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: '*', }, {
         provideCompletionItems(document, position) {
             const linePrefix = document.lineAt(position).text.slice(0, position.character);
-            const regExp1 = RegExp('"((?:\\.|[^"])*/)');
-            const regExp2 = RegExp("'((?:\\.|[^'])*/)");
+            const regExp1 = RegExp('"((?:\\.|[^"])*/?)');
+            const regExp2 = RegExp("'((?:\\.|[^'])*/?)");
             const matchs1 = regExp1.exec(linePrefix) || [];
             const matchs2 = regExp2.exec(linePrefix) || [];
             if (matchs1.length == 0 && matchs2.length == 0) {
@@ -259,7 +259,7 @@ function activate(context) {
             }
             return tipkeyWorkList;
         }
-    }, "/");
+    }, "/", ".");
     context.subscriptions.push(pathProvider);
     function buildKeyWorkListFromWorkSpace(tipkeyWorkList, pathSuffix) {
         vscode.workspace.workspaceFolders?.forEach(folder => {

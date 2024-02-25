@@ -69,9 +69,9 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
-			if (!fs.existsSync(curFilePath)) {
+			if (!fs.existsSync(curFilePath) && fs.statSync(curFilePath).isFile()) {
 				curFilePath = match[1];
-				if (!fs.existsSync(curFilePath)) {
+				if (!fs.existsSync(curFilePath) && fs.statSync(curFilePath).isFile()) {
 					continue;
 				}
 			}
@@ -285,8 +285,8 @@ export function activate(context: vscode.ExtensionContext) {
 		{ scheme: 'file', language: '*', }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
-			const regExp1 = RegExp('"((?:\\.|[^"])*/)');
-			const regExp2 = RegExp("'((?:\\.|[^'])*/)");
+			const regExp1 = RegExp('"((?:\\.|[^"])*/?)');
+			const regExp2 = RegExp("'((?:\\.|[^'])*/?)");
 			const matchs1 = regExp1.exec(linePrefix) || [];
 			const matchs2 = regExp2.exec(linePrefix) || [];
 			if (matchs1.length == 0 && matchs2.length == 0) {
@@ -306,7 +306,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return tipkeyWorkList;
 		}
 	},
-		"/"
+		"/","."
 	);
 
 	context.subscriptions.push(pathProvider);
