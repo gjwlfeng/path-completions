@@ -118,7 +118,7 @@ function activate(context) {
                                     borderStyle: 'solid',
                                     width: `${fontSize + 4}px`,
                                     height: `${fontSize + 4}px`,
-                                    borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+                                    borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
                                     backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
                                     // borderColor: 'darkblue',
                                     // backgroundColor: 'darkblue',
@@ -133,7 +133,7 @@ function activate(context) {
                                     borderStyle: 'solid',
                                     width: `${fontSize + 4}px`,
                                     height: `${fontSize + 4}px`,
-                                    borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+                                    borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
                                     backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
                                     // borderColor: 'darkblue',
                                     // backgroundColor: 'darkblue',
@@ -177,10 +177,12 @@ function activate(context) {
                 const r = data[index];
                 const g = data[index + 1];
                 const b = data[index + 2];
-                rTotal += r;
-                gTotal += g;
-                bTotal += b;
-                pixelCount++;
+                if (Math.abs(125 - r) > 20 && Math.abs(125 - g) > 20 && Math.abs(125 - b) > 20) {
+                    rTotal += r;
+                    gTotal += g;
+                    bTotal += b;
+                    pixelCount++;
+                }
             }
         }
         const rAverage = rTotal / pixelCount;

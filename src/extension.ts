@@ -95,6 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
 			fs.mkdirSync(path.dirname(thumPath), {
 				recursive: true,
 			});
+
 			let sharpMetadata: sharp.Metadata | undefined;
 			try {
 				sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
@@ -136,7 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
 									borderStyle: 'solid',
 									width: `${fontSize + 4}px`,
 									height: `${fontSize + 4}px`,
-									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+									borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									// borderColor: 'darkblue',
 									// backgroundColor: 'darkblue',
@@ -151,7 +152,7 @@ export function activate(context: vscode.ExtensionContext) {
 									borderStyle: 'solid',
 									width: `${fontSize + 4}px`,
 									height: `${fontSize + 4}px`,
-									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+									borderColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									// borderColor: 'darkblue',
 									// backgroundColor: 'darkblue',
@@ -194,6 +195,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		for (let y = 0; y < height; y++) {
 			for (let x = 0; x < width; x++) {
+
 				// 计算索引
 				const index = (y * width + x) * channels;
 				// 提取RGB值
@@ -201,10 +203,12 @@ export function activate(context: vscode.ExtensionContext) {
 				const g = data[index + 1];
 				const b = data[index + 2];
 
-				rTotal += r;
-				gTotal += g;
-				bTotal += b;
-				pixelCount++;
+				if (Math.abs(125 - r) > 20 && Math.abs(125 - g) > 20 && Math.abs(125 - b) >20) {
+					rTotal += r;
+					gTotal += g;
+					bTotal += b;
+					pixelCount++;
+				}
 
 			}
 		}
@@ -271,15 +275,15 @@ export function activate(context: vscode.ExtensionContext) {
 			if (matchs1.length == 0 && matchs2.length == 0) {
 				return undefined;
 			}
-	
+
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
 			if (matchs1[1] != null) {
 				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1]);
-				buildKeyWorkListFromFile(tipkeyWorkList,matchs1[1]);
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1]);
 			}
 			if (matchs2[1] != null) {
 				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[2]);
-				buildKeyWorkListFromFile(tipkeyWorkList,matchs2[2]);
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[2]);
 			}
 
 			return tipkeyWorkList;
@@ -293,11 +297,11 @@ export function activate(context: vscode.ExtensionContext) {
 	function buildKeyWorkListFromWorkSpace(tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
 			const completionPath = path.join(folder.uri.fsPath, pathSuffix);
-			buildKeyWorkListFromFile(tipkeyWorkList,completionPath);
+			buildKeyWorkListFromFile(tipkeyWorkList, completionPath);
 		});
 	}
 
-	function buildKeyWorkListFromFile(tipkeyWorkList: vscode.CompletionItem[],completionPath: string) {
+	function buildKeyWorkListFromFile(tipkeyWorkList: vscode.CompletionItem[], completionPath: string) {
 		if (fs.existsSync(completionPath)) {
 			const childs = fs.readdirSync(completionPath);
 			childs.forEach(element => {
