@@ -8,13 +8,27 @@ import * as vscode from 'vscode';
 import CryptoJS = require('crypto-js');
 import sharp = require('sharp');
 
+const fileMd5Map: Map<string, string> = new Map();
+let timeout: NodeJS.Timer | undefined = undefined;
+
+
+let outputChannel: vscode.LogOutputChannel | undefined=undefined;  // 输出通道
+/**
+ * 输出信息到控制台上，输出通道为MyCoder
+ * @param message 输出的文本信息
+ */
+export function myLog() {
+	if (outputChannel === undefined) {
+		outputChannel = vscode.window.createOutputChannel('path-completions', {
+			log: true,
+		});
+	}
+	return outputChannel;
+}
+
 export function activate(context: vscode.ExtensionContext) {
 
-	console.log('path completions is activated');
-
-	const fileMd5Map: Map<string, string> = new Map();
-
-	let timeout: NodeJS.Timer | undefined = undefined;
+	myLog().info('path completions is activated');
 
 	// create a decorator type that we use to decorate large numbers
 	const iamgeDecorationType = vscode.window.createTextEditorDecorationType({
@@ -35,12 +49,10 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	let activeEditor = vscode.window.activeTextEditor;
-
 	async function updateDecorations() {
 		if (!activeEditor) {
 			return;
 		}
-
 
 		const imageDecorationOptions: vscode.DecorationOptions[] = [];
 
@@ -123,7 +135,9 @@ export function activate(context: vscode.ExtensionContext) {
 						hoverMessage.appendText("\n");
 					}
 					// eslint-disable-next-line no-empty
-				} catch (error) { }
+				} catch (error) {
+					myLog().error(`metadata:${error}`);
+				}
 				try {
 					await sharp(fs.readFileSync(curFilePath))
 						.resize(width, height, {
@@ -135,7 +149,9 @@ export function activate(context: vscode.ExtensionContext) {
 					//保存新的md5
 					fileMd5Map.set(curFilePath, fileMD5);
 					// eslint-disable-next-line no-empty
-				} catch (error) { }
+				} catch (error) {
+					myLog().error(`toFile:${error}`);
+				}
 			}
 
 			if (fs.existsSync(thumPath) && fs.statSync(thumPath).isFile()) {
@@ -144,7 +160,13 @@ export function activate(context: vscode.ExtensionContext) {
 				hoverMessage.appendText("\n");
 
 				const themeColor = await getThemeColors(thumPath);
-				const invertedColor = getInvertdColor(themeColor);
+				let invertedColor;
+				if (themeColor != null) {
+					invertedColor = getInvertdColor(themeColor);
+				}
+
+				const borderColor = themeColor ? `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}` : "darkblue";
+				const backgroundColor = invertedColor ? `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}` : "darkblue";
 
 				const decoration = {
 					hoverMessage: hoverMessage,
@@ -158,8 +180,8 @@ export function activate(context: vscode.ExtensionContext) {
 								borderStyle: 'solid',
 								width: `${fontSize + 4}px`,
 								height: `${fontSize + 4}px`,
-								borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-								backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+								borderColor: borderColor,
+								backgroundColor: backgroundColor,
 								// borderColor: 'darkblue',
 								// backgroundColor: 'darkblue',
 							}
@@ -173,8 +195,8 @@ export function activate(context: vscode.ExtensionContext) {
 								borderStyle: 'solid',
 								width: `${fontSize + 4}px`,
 								height: `${fontSize + 4}px`,
-								borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-								backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+								borderColor: borderColor,
+								backgroundColor: backgroundColor,
 								// borderColor: 'darkblue',
 								// backgroundColor: 'darkblue',
 							}
@@ -190,53 +212,55 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-
 	function padZeroHex(num: number) {
 		const hex = num.toString(16).toUpperCase(); // 转换为大写十六进制
 		return hex.length === 1 ? '0' + hex : hex; // 如果长度为1，则补零
 	}
 
-	async function getThemeColors(imagePath: string) {
-
+	async function getThemeColors(imagePath: string): Promise<vscode.Color | undefined> {
 		// 加载图片
-		const image = sharp(imagePath);
+		try {
+			const image = sharp(imagePath);
 
-		// 获取原始像素缓冲区
-		const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+			// 获取原始像素缓冲区
+			const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
 
-		// 假设图片是RGB格式（如果不是，可能需要根据info.channels进行调整）
-		const width = info.width;
-		const height = info.height;
-		const channels = info.channels; // 通常是3（RGB）
 
-		let rTotal: number = 0, gTotal: number = 0, bTotal: number = 0;
-		let pixelCount: number = 0;
+			// 假设图片是RGB格式（如果不是，可能需要根据info.channels进行调整）
+			const width = info.width;
+			const height = info.height;
+			const channels = info.channels; // 通常是3（RGB）
 
-		for (let y = 0; y < height; y++) {
-			for (let x = 0; x < width; x++) {
+			let rTotal: number = 0, gTotal: number = 0, bTotal: number = 0;
+			let pixelCount: number = 0;
 
-				// 计算索引
-				const index = (y * width + x) * channels;
-				// 提取RGB值
-				const r = data[index];
-				const g = data[index + 1];
-				const b = data[index + 2];
-				const a = data[index + 3];
+			for (let y = 0; y < height; y++) {
+				for (let x = 0; x < width; x++) {
 
-				if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
-					rTotal += r;
-					gTotal += g;
-					bTotal += b;
-					pixelCount++;
+					// 计算索引
+					const index = (y * width + x) * channels;
+					// 提取RGB值
+					const r = data[index];
+					const g = data[index + 1];
+					const b = data[index + 2];
+					const a = data[index + 3];
+
+					if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
+						rTotal += r;
+						gTotal += g;
+						bTotal += b;
+						pixelCount++;
+					}
 				}
-
 			}
+			const rAverage = rTotal / pixelCount;
+			const gAverage = gTotal / pixelCount;
+			const bAverage = bTotal / pixelCount;
+			return new vscode.Color(Math.round(rAverage), Math.round(gAverage), Math.round(bAverage), 255);
+		} catch (error) {
+			myLog().error(`getThemeColors:${error}`);
+			return undefined;
 		}
-
-		const rAverage = rTotal / pixelCount;
-		const gAverage = gTotal / pixelCount;
-		const bAverage = bTotal / pixelCount;
-		return new vscode.Color(Math.round(rAverage), Math.round(gAverage), Math.round(bAverage), 255);
 	}
 
 	function getInvertdColor(color: vscode.Color): vscode.Color {
@@ -345,6 +369,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 
+}
+
+export function deactivate() {
+	myLog().info('path-completions is now deactivate!');
+	fileMd5Map.clear();
+	if (timeout) {
+		clearTimeout(timeout);
+		timeout = undefined;
+	}
 }
 
 
