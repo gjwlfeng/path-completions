@@ -45,8 +45,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const fontSize = getCurrentEditorFontSize();
 
-		const regEx1 = new RegExp("\"(.*)\"", 'g');
-		const regEx2 = new RegExp("'(.*)'", 'g');
+		const regEx1 = new RegExp('"((?:\\.|[^"])*)"', 'g');
+		const regEx2 = new RegExp("'((?:\\.|[^'])*)'", 'g');
 
 		const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
 		if (curWorkspaceFolder == null) {
@@ -68,9 +68,12 @@ export function activate(context: vscode.ExtensionContext) {
 				continue;
 			}
 
-			const curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
+			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
 			if (!fs.existsSync(curFilePath)) {
-				continue;
+				curFilePath=match[1];
+				if (!fs.existsSync(curFilePath)) {
+					continue;
+				}
 			}
 
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
@@ -134,7 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
 									width: `${fontSize + 4}px`,
 									height: `${fontSize + 4}px`,
 									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-										backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									// borderColor: 'darkblue',
 									// backgroundColor: 'darkblue',
 								}
@@ -149,7 +152,7 @@ export function activate(context: vscode.ExtensionContext) {
 									width: `${fontSize + 4}px`,
 									height: `${fontSize + 4}px`,
 									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-										backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
 									// borderColor: 'darkblue',
 									// backgroundColor: 'darkblue',
 								}
@@ -168,7 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	
+
 	function padZeroHex(num: number) {
 		const hex = num.toString(16).toUpperCase(); // 转换为大写十六进制
 		return hex.length === 1 ? '0' + hex : hex; // 如果长度为1，则补零
@@ -261,8 +264,8 @@ export function activate(context: vscode.ExtensionContext) {
 		{ scheme: 'file', language: '*', }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
-			const regExp1 = RegExp("\"([^\"]*/)");
-			const regExp2 = RegExp("'([^']*/)");
+			const regExp1 = RegExp('"((?:\\.|[^"])*)/');
+			const regExp2 = RegExp("'((?:\\.|[^'])*/)");
 			const matchs1 = regExp1.exec(linePrefix) || [];
 			const matchs2 = regExp2.exec(linePrefix) || [];
 			if (matchs1.length == 0 && matchs2.length == 0) {

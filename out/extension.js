@@ -37,8 +37,8 @@ function activate(context) {
         }
         const imageDecorationOptions = [];
         const fontSize = getCurrentEditorFontSize();
-        const regEx1 = new RegExp("\"(.*)\"", 'g');
-        const regEx2 = new RegExp("'(.*)'", 'g');
+        const regEx1 = new RegExp('"((?:\\.|[^"])*)"', 'g');
+        const regEx2 = new RegExp("'((?:\\.|[^'])*)'", 'g');
         const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
         if (curWorkspaceFolder == null) {
             return;
@@ -56,9 +56,12 @@ function activate(context) {
             if (match[1].trim().length == 0) {
                 continue;
             }
-            const curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
+            let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
             if (!fs.existsSync(curFilePath)) {
-                continue;
+                curFilePath = match[1];
+                if (!fs.existsSync(curFilePath)) {
+                    continue;
+                }
             }
             const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
             const tempDir = os.tmpdir();
@@ -221,8 +224,8 @@ function activate(context) {
     const pathProvider = vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: '*', }, {
         provideCompletionItems(document, position) {
             const linePrefix = document.lineAt(position).text.slice(0, position.character);
-            const regExp1 = RegExp("\"([^\"]*/)");
-            const regExp2 = RegExp("'([^']*/)");
+            const regExp1 = RegExp('"((?:\\.|[^"])*)/');
+            const regExp2 = RegExp("'((?:\\.|[^'])*/)");
             const matchs1 = regExp1.exec(linePrefix) || [];
             const matchs2 = regExp2.exec(linePrefix) || [];
             if (matchs1.length == 0 && matchs2.length == 0) {
