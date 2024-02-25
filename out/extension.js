@@ -241,8 +241,8 @@ function activate(context) {
     const pathProvider = vscode.languages.registerCompletionItemProvider({ scheme: 'file', language: '*', }, {
         provideCompletionItems(document, position) {
             const linePrefix = document.lineAt(position).text.slice(0, position.character);
-            const regExp1 = RegExp('"((?:\\.|[^"])*/?)');
-            const regExp2 = RegExp("'((?:\\.|[^'])*/?)");
+            const regExp1 = RegExp('"((?:\\.|[^"])*/)');
+            const regExp2 = RegExp("'((?:\\.|[^'])*/)");
             const matchs1 = regExp1.exec(linePrefix) || [];
             const matchs2 = regExp2.exec(linePrefix) || [];
             if (matchs1.length == 0 && matchs2.length == 0) {
@@ -253,9 +253,9 @@ function activate(context) {
                 buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1]);
                 buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1]);
             }
-            if (matchs2[1] != null) {
-                buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[2]);
-                buildKeyWorkListFromFile(tipkeyWorkList, matchs2[2]);
+            if (matchs2[1] != null && matchs2[1] !== matchs1[1]) {
+                buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1]);
+                buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1]);
             }
             return tipkeyWorkList;
         }
