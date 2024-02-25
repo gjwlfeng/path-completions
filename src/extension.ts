@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
 			if (!fs.existsSync(curFilePath)) {
-				curFilePath=match[1];
+				curFilePath = match[1];
 				if (!fs.existsSync(curFilePath)) {
 					continue;
 				}
@@ -264,37 +264,23 @@ export function activate(context: vscode.ExtensionContext) {
 		{ scheme: 'file', language: '*', }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
-			const regExp1 = RegExp('"((?:\\.|[^"])*)/');
+			const regExp1 = RegExp('"((?:\\.|[^"])*/)');
 			const regExp2 = RegExp("'((?:\\.|[^'])*/)");
 			const matchs1 = regExp1.exec(linePrefix) || [];
 			const matchs2 = regExp2.exec(linePrefix) || [];
 			if (matchs1.length == 0 && matchs2.length == 0) {
 				return undefined;
 			}
-			const pathSuffix = matchs1.length != 0 ? matchs1[1] : matchs2[1];
+	
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
-			vscode.workspace.workspaceFolders?.forEach(folder => {
-				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
-				if (fs.existsSync(completionPath)) {
-					const childs = fs.readdirSync(completionPath);
-					childs.forEach(element => {
-
-						if (!element.startsWith(".")) {
-							const itemPath = path.join(folder.uri.fsPath, pathSuffix, element);
-							if (fs.existsSync(itemPath)) {
-								const itemStat = fs.statSync(itemPath);
-								if (itemStat.isDirectory()) {
-									const completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
-									tipkeyWorkList.push(completionItem);
-								} else {
-									const completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
-									tipkeyWorkList.push(completionItem);
-								}
-							}
-						}
-					});
-				}
-			});
+			if (matchs1[1] != null) {
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1]);
+				buildKeyWorkListFromFile(tipkeyWorkList,matchs1[1]);
+			}
+			if (matchs2[1] != null) {
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[2]);
+				buildKeyWorkListFromFile(tipkeyWorkList,matchs2[2]);
+			}
 
 			return tipkeyWorkList;
 		}
@@ -303,6 +289,35 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(pathProvider);
+
+	function buildKeyWorkListFromWorkSpace(tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string) {
+		vscode.workspace.workspaceFolders?.forEach(folder => {
+			const completionPath = path.join(folder.uri.fsPath, pathSuffix);
+			buildKeyWorkListFromFile(tipkeyWorkList,completionPath);
+		});
+	}
+
+	function buildKeyWorkListFromFile(tipkeyWorkList: vscode.CompletionItem[],completionPath: string) {
+		if (fs.existsSync(completionPath)) {
+			const childs = fs.readdirSync(completionPath);
+			childs.forEach(element => {
+
+				if (!element.startsWith(".")) {
+					const itemPath = path.join(completionPath, element);
+					if (fs.existsSync(itemPath)) {
+						const itemStat = fs.statSync(itemPath);
+						if (itemStat.isDirectory()) {
+							const completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
+							tipkeyWorkList.push(completionItem);
+						} else {
+							const completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
+							tipkeyWorkList.push(completionItem);
+						}
+					}
+				}
+			});
+		}
+	}
 }
 
 
