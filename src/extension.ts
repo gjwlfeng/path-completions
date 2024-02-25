@@ -41,6 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
+
 		const imageDecorationOptions: vscode.DecorationOptions[] = [];
 
 		const fontSize = getCurrentEditorFontSize();
@@ -56,10 +57,13 @@ export function activate(context: vscode.ExtensionContext) {
 		await matchImage(activeEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 		await matchImage(activeEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 		activeEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
+
+
 	}
 
 	async function matchImage(activeEditor: vscode.TextEditor, regEx: RegExp, text: string, curWorkspaceFolder: vscode.WorkspaceFolder, fontSize: number, imageDecorationOptions: vscode.DecorationOptions[]) {
 		let match;
+
 		while ((match = regEx.exec(text))) {
 			const startPos = activeEditor.document.positionAt(match.index);
 			const endPos = activeEditor.document.positionAt(match.index + match[0].length);
@@ -76,7 +80,6 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 
-
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
 			const tempDir = os.tmpdir();
 			const thumPath = path.join(tempDir, "thum", "path_completions", path.basename(curWorkspaceFolder.name), path.dirname(itemRelativePath), path.basename(itemRelativePath, path.extname(itemRelativePath)) + ".webp");
@@ -90,8 +93,7 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.supportHtml = true;
 			hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
 			hoverMessage.appendText("\n");
-			hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
-			hoverMessage.appendText("\n");
+
 
 			const isExistThum = fs.existsSync(thumPath);
 
@@ -129,59 +131,58 @@ export function activate(context: vscode.ExtensionContext) {
 						})
 						.webp()
 						.toFile(thumPath);
+
 					//保存新的md5
 					fileMd5Map.set(curFilePath, fileMD5);
 					// eslint-disable-next-line no-empty
 				} catch (error) { }
 			}
 
-			if (fs.existsSync(thumPath)) {
-				const thumPathStat = fs.statSync(thumPath);
-				if (thumPathStat.isFile()) {
+			if (fs.existsSync(thumPath) && fs.statSync(thumPath).isFile()) {
 
-					const themeColor = await getThemeColors(thumPath);
-					const invertedColor = getInvertdColor(themeColor);
+				hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
+				hoverMessage.appendText("\n");
 
-					const decoration = {
-						hoverMessage: hoverMessage,
-						range: new vscode.Range(startPos, endPos), renderOptions: {
-							light: {
-								before: {
-									contentIconPath: vscode.Uri.file(thumPath),
-									//border: '2px solid green',
-									margin: '0px 4px 0px 0px',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									width: `${fontSize + 4}px`,
-									height: `${fontSize + 4}px`,
-									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
-									// borderColor: 'darkblue',
-									// backgroundColor: 'darkblue',
-								}
-							},
-							dark: {
-								before: {
-									contentIconPath: vscode.Uri.file(thumPath),
-									//border: '2px solid green',
-									margin: '0px 4px 0px 0px',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									width: `${fontSize + 4}px`,
-									height: `${fontSize + 4}px`,
-									borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-									backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
-									// borderColor: 'darkblue',
-									// backgroundColor: 'darkblue',
-								}
+				const themeColor = await getThemeColors(thumPath);
+				const invertedColor = getInvertdColor(themeColor);
+
+				const decoration = {
+					hoverMessage: hoverMessage,
+					range: new vscode.Range(startPos, endPos), renderOptions: {
+						light: {
+							before: {
+								contentIconPath: vscode.Uri.file(thumPath),
+								//border: '2px solid green',
+								margin: '0px 4px 0px 0px',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								width: `${fontSize + 4}px`,
+								height: `${fontSize + 4}px`,
+								borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+								backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+								// borderColor: 'darkblue',
+								// backgroundColor: 'darkblue',
+							}
+						},
+						dark: {
+							before: {
+								contentIconPath: vscode.Uri.file(thumPath),
+								//border: '2px solid green',
+								margin: '0px 4px 0px 0px',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								width: `${fontSize + 4}px`,
+								height: `${fontSize + 4}px`,
+								borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+								backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+								// borderColor: 'darkblue',
+								// backgroundColor: 'darkblue',
 							}
 						}
-					};
-					imageDecorationOptions.push(decoration);
-				} else {
-					const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
-					imageDecorationOptions.push(decoration);
-				}
+					}
+				};
+				imageDecorationOptions.push(decoration);
+
 			} else {
 				const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
 				imageDecorationOptions.push(decoration);
@@ -222,14 +223,13 @@ export function activate(context: vscode.ExtensionContext) {
 				const b = data[index + 2];
 				const a = data[index + 3];
 
-			
-					if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
-						rTotal += r;
-						gTotal += g;
-						bTotal += b;
-						pixelCount++;
-					}
-			
+				if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
+					rTotal += r;
+					gTotal += g;
+					bTotal += b;
+					pixelCount++;
+				}
+
 			}
 		}
 
@@ -342,6 +342,9 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 		}
 	}
+
+
+
 }
 
 

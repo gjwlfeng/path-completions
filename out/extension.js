@@ -75,8 +75,6 @@ function activate(context) {
             hoverMessage.supportHtml = true;
             hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
             hoverMessage.appendText("\n");
-            hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
-            hoverMessage.appendText("\n");
             const isExistThum = fs.existsSync(thumPath);
             const fileContent = fs.readFileSync(curFilePath);
             const wordArray = CryptoJS.lib.WordArray.create(fileContent);
@@ -116,52 +114,47 @@ function activate(context) {
                 }
                 catch (error) { }
             }
-            if (fs.existsSync(thumPath)) {
-                const thumPathStat = fs.statSync(thumPath);
-                if (thumPathStat.isFile()) {
-                    const themeColor = await getThemeColors(thumPath);
-                    const invertedColor = getInvertdColor(themeColor);
-                    const decoration = {
-                        hoverMessage: hoverMessage,
-                        range: new vscode.Range(startPos, endPos), renderOptions: {
-                            light: {
-                                before: {
-                                    contentIconPath: vscode.Uri.file(thumPath),
-                                    //border: '2px solid green',
-                                    margin: '0px 4px 0px 0px',
-                                    borderWidth: '1px',
-                                    borderStyle: 'solid',
-                                    width: `${fontSize + 4}px`,
-                                    height: `${fontSize + 4}px`,
-                                    borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-                                    backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
-                                    // borderColor: 'darkblue',
-                                    // backgroundColor: 'darkblue',
-                                }
-                            },
-                            dark: {
-                                before: {
-                                    contentIconPath: vscode.Uri.file(thumPath),
-                                    //border: '2px solid green',
-                                    margin: '0px 4px 0px 0px',
-                                    borderWidth: '1px',
-                                    borderStyle: 'solid',
-                                    width: `${fontSize + 4}px`,
-                                    height: `${fontSize + 4}px`,
-                                    borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
-                                    backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
-                                    // borderColor: 'darkblue',
-                                    // backgroundColor: 'darkblue',
-                                }
+            if (fs.existsSync(thumPath) && fs.statSync(thumPath).isFile()) {
+                hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
+                hoverMessage.appendText("\n");
+                const themeColor = await getThemeColors(thumPath);
+                const invertedColor = getInvertdColor(themeColor);
+                const decoration = {
+                    hoverMessage: hoverMessage,
+                    range: new vscode.Range(startPos, endPos), renderOptions: {
+                        light: {
+                            before: {
+                                contentIconPath: vscode.Uri.file(thumPath),
+                                //border: '2px solid green',
+                                margin: '0px 4px 0px 0px',
+                                borderWidth: '1px',
+                                borderStyle: 'solid',
+                                width: `${fontSize + 4}px`,
+                                height: `${fontSize + 4}px`,
+                                borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+                                backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+                                // borderColor: 'darkblue',
+                                // backgroundColor: 'darkblue',
+                            }
+                        },
+                        dark: {
+                            before: {
+                                contentIconPath: vscode.Uri.file(thumPath),
+                                //border: '2px solid green',
+                                margin: '0px 4px 0px 0px',
+                                borderWidth: '1px',
+                                borderStyle: 'solid',
+                                width: `${fontSize + 4}px`,
+                                height: `${fontSize + 4}px`,
+                                borderColor: `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}`,
+                                backgroundColor: `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}`,
+                                // borderColor: 'darkblue',
+                                // backgroundColor: 'darkblue',
                             }
                         }
-                    };
-                    imageDecorationOptions.push(decoration);
-                }
-                else {
-                    const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
-                    imageDecorationOptions.push(decoration);
-                }
+                    }
+                };
+                imageDecorationOptions.push(decoration);
             }
             else {
                 const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
