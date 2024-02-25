@@ -8,6 +8,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const vscode = require("vscode");
+const CryptoJS = require("crypto-js");
 const sharp = require("sharp");
 function activate(context) {
     console.log('path completions is activated');
@@ -76,31 +77,45 @@ function activate(context) {
             hoverMessage.appendText("\n");
             hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
             hoverMessage.appendText("\n");
-            fs.mkdirSync(path.dirname(thumPath), {
-                recursive: true,
-            });
-            let sharpMetadata;
-            try {
-                sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
-                if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
-                    hoverMessage.appendText(`width:${sharpMetadata.width},`);
-                    hoverMessage.appendText("\n");
-                    hoverMessage.appendText(`height:${sharpMetadata.height},`);
-                    hoverMessage.appendText("\n");
+            const isExistThum = fs.existsSync(thumPath);
+            const fileContent = fs.readFileSync(curFilePath);
+            const wordArray = CryptoJS.lib.WordArray.create(fileContent);
+            const fileMD5 = CryptoJS.MD5(wordArray).toString();
+            const oldMd5 = fileMd5Map.get(curFilePath);
+            if (fileMD5 !== oldMd5 || !isExistThum) {
+                if (isExistThum) {
+                    fs.unlinkSync(thumPath);
                 }
-                // eslint-disable-next-line no-empty
+                else {
+                    fs.mkdirSync(path.dirname(thumPath), {
+                        recursive: true,
+                    });
+                }
+                let sharpMetadata;
+                try {
+                    sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
+                    if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
+                        hoverMessage.appendText(`width:${sharpMetadata.width},`);
+                        hoverMessage.appendText("\n");
+                        hoverMessage.appendText(`height:${sharpMetadata.height},`);
+                        hoverMessage.appendText("\n");
+                    }
+                    // eslint-disable-next-line no-empty
+                }
+                catch (error) { }
+                try {
+                    await sharp(fs.readFileSync(curFilePath))
+                        .resize(width, height, {
+                        fit: sharp.fit.inside,
+                    })
+                        .webp()
+                        .toFile(thumPath);
+                    //保存新的md5
+                    fileMd5Map.set(curFilePath, fileMD5);
+                    // eslint-disable-next-line no-empty
+                }
+                catch (error) { }
             }
-            catch (error) { }
-            try {
-                await sharp(fs.readFileSync(curFilePath))
-                    .resize(width, height, {
-                    fit: sharp.fit.inside,
-                })
-                    .webp()
-                    .toFile(thumPath);
-                // eslint-disable-next-line no-empty
-            }
-            catch (error) { }
             if (fs.existsSync(thumPath)) {
                 const thumPathStat = fs.statSync(thumPath);
                 if (thumPathStat.isFile()) {

@@ -76,6 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 
+		
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
 			const tempDir = os.tmpdir();
 			const thumPath = path.join(tempDir, "thum", "path_completions", path.basename(curWorkspaceFolder.name), path.dirname(itemRelativePath), path.basename(itemRelativePath, path.extname(itemRelativePath)) + ".webp");
@@ -92,31 +93,48 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
 			hoverMessage.appendText("\n");
 
-			fs.mkdirSync(path.dirname(thumPath), {
-				recursive: true,
-			});
+			const isExistThum= fs.existsSync(thumPath);
 
-			let sharpMetadata: sharp.Metadata | undefined;
-			try {
-				sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
+			const fileContent = fs.readFileSync(curFilePath);
+			const wordArray = CryptoJS.lib.WordArray.create(fileContent);
+			const fileMD5 = CryptoJS.MD5(wordArray).toString();
 
-				if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
-					hoverMessage.appendText(`width:${sharpMetadata.width},`);
-					hoverMessage.appendText("\n");
-					hoverMessage.appendText(`height:${sharpMetadata.height},`);
-					hoverMessage.appendText("\n");
+			const oldMd5 = fileMd5Map.get(curFilePath);
+
+			if (fileMD5 !== oldMd5 || !isExistThum) {
+				if (isExistThum) {
+					fs.unlinkSync(thumPath);
+				} else {
+					fs.mkdirSync(path.dirname(thumPath), {
+						recursive: true,
+					});
 				}
-				// eslint-disable-next-line no-empty
-			} catch (error) { }
-			try {
-				await sharp(fs.readFileSync(curFilePath))
-					.resize(width, height, {
-						fit: sharp.fit.inside,
-					})
-					.webp()
-					.toFile(thumPath);
-				// eslint-disable-next-line no-empty
-			} catch (error) { }
+
+				let sharpMetadata: sharp.Metadata | undefined;
+				try {
+					sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
+
+					if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
+						hoverMessage.appendText(`width:${sharpMetadata.width},`);
+						hoverMessage.appendText("\n");
+						hoverMessage.appendText(`height:${sharpMetadata.height},`);
+						hoverMessage.appendText("\n");
+					}
+					// eslint-disable-next-line no-empty
+				} catch (error) { }
+				try {
+					await sharp(fs.readFileSync(curFilePath))
+						.resize(width, height, {
+							fit: sharp.fit.inside,
+						})
+						.webp()
+						.toFile(thumPath);
+
+						//保存新的md5
+						fileMd5Map.set(curFilePath,fileMD5);
+					// eslint-disable-next-line no-empty
+				} catch (error) { }
+			}
 
 			if (fs.existsSync(thumPath)) {
 				const thumPathStat = fs.statSync(thumPath);
@@ -203,7 +221,7 @@ export function activate(context: vscode.ExtensionContext) {
 				const g = data[index + 1];
 				const b = data[index + 2];
 
-				if (Math.abs(125 - r) > 20 && Math.abs(125 - g) > 20 && Math.abs(125 - b) >20) {
+				if (Math.abs(125 - r) > 20 && Math.abs(125 - g) > 20 && Math.abs(125 - b) > 20) {
 					rTotal += r;
 					gTotal += g;
 					bTotal += b;
