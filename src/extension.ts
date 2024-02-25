@@ -161,7 +161,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				const themeColor = await getThemeColors(thumPath);
 				let invertedColor;
-				if (themeColor != null) {
+				if (themeColor !== undefined) {
 					invertedColor = getInvertdColor(themeColor);
 				}
 
