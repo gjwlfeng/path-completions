@@ -58,9 +58,9 @@ function activate(context) {
                 continue;
             }
             let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
-            if (!fs.existsSync(curFilePath) && fs.statSync(curFilePath).isFile()) {
+            if (!fs.existsSync(curFilePath) || (!fs.statSync(curFilePath).isFile())) {
                 curFilePath = match[1];
-                if (!fs.existsSync(curFilePath) && fs.statSync(curFilePath).isFile()) {
+                if (!fs.existsSync(curFilePath) || (!fs.statSync(curFilePath).isFile())) {
                     continue;
                 }
             }
@@ -192,7 +192,8 @@ function activate(context) {
                 const r = data[index];
                 const g = data[index + 1];
                 const b = data[index + 2];
-                if (Math.abs(125 - r) > 20 && Math.abs(125 - g) > 20 && Math.abs(125 - b) > 20) {
+                const a = data[index + 3];
+                if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
                     rTotal += r;
                     gTotal += g;
                     bTotal += b;
