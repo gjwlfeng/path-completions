@@ -78,11 +78,12 @@ function activate(context) {
             hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
             hoverMessage.appendText("\n");
             const isExistThum = fs.existsSync(thumPath);
+            const isFile = fs.statSync(thumPath).isFile();
             const fileContent = fs.readFileSync(curFilePath);
             const wordArray = CryptoJS.lib.WordArray.create(fileContent);
             const fileMD5 = CryptoJS.MD5(wordArray).toString();
             const oldMd5 = fileMd5Map.get(curFilePath);
-            if (fileMD5 !== oldMd5 || !isExistThum) {
+            if (fileMD5 !== oldMd5 || !isExistThum || !isFile) {
                 if (isExistThum) {
                     fs.unlinkSync(thumPath);
                 }

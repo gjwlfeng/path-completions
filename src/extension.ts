@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 
-		
+
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
 			const tempDir = os.tmpdir();
 			const thumPath = path.join(tempDir, "thum", "path_completions", path.basename(curWorkspaceFolder.name), path.dirname(itemRelativePath), path.basename(itemRelativePath, path.extname(itemRelativePath)) + ".webp");
@@ -93,7 +93,8 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
 			hoverMessage.appendText("\n");
 
-			const isExistThum= fs.existsSync(thumPath);
+			const isExistThum = fs.existsSync(thumPath);
+			const isFile = fs.statSync(thumPath).isFile();
 
 			const fileContent = fs.readFileSync(curFilePath);
 			const wordArray = CryptoJS.lib.WordArray.create(fileContent);
@@ -101,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const oldMd5 = fileMd5Map.get(curFilePath);
 
-			if (fileMD5 !== oldMd5 || !isExistThum) {
+			if (fileMD5 !== oldMd5 || !isExistThum || !isFile) {
 				if (isExistThum) {
 					fs.unlinkSync(thumPath);
 				} else {
@@ -129,9 +130,8 @@ export function activate(context: vscode.ExtensionContext) {
 						})
 						.webp()
 						.toFile(thumPath);
-
-						//保存新的md5
-						fileMd5Map.set(curFilePath,fileMD5);
+					//保存新的md5
+					fileMd5Map.set(curFilePath, fileMD5);
 					// eslint-disable-next-line no-empty
 				} catch (error) { }
 			}
