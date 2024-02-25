@@ -1,9 +1,9 @@
 {
 	"name": "path-completions",
 	"displayName": "Path Completions",
+	"description": "path completions",
 	"version": "0.0.1",
 	"publisher": "zengfeng",
-	"private": true,
 	"license": "MIT",
 	"repository": {
 		"type": "git",
