@@ -12,7 +12,7 @@ const fileMd5Map: Map<string, string> = new Map();
 let timeout: NodeJS.Timer | undefined = undefined;
 
 
-let outputChannel: vscode.LogOutputChannel | undefined=undefined;  // 输出通道
+let outputChannel: vscode.LogOutputChannel | undefined = undefined;  // 输出通道
 /**
  * 输出信息到控制台上，输出通道为MyCoder
  * @param message 输出的文本信息
@@ -114,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const oldMd5 = fileMd5Map.get(curFilePath);
 
 			if (fileMD5 !== oldMd5 || !isExistThum) {
-				
+
 				let sharpMetadata: sharp.Metadata | undefined;
 				try {
 					sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
@@ -240,7 +240,7 @@ export function activate(context: vscode.ExtensionContext) {
 					const b = data[index + 2];
 					const a = data[index + 3];
 
-					if (Math.abs(125 - r) > 40 || Math.abs(125 - g) > 40 || Math.abs(125 - b) > 40) {
+					if ((Math.abs(125 - r) > 20 || Math.abs(125 - g) > 20 || Math.abs(125 - b) > 20)) {
 						rTotal += r;
 						gTotal += g;
 						bTotal += b;
