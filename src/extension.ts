@@ -35,8 +35,9 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	let activeEditor = vscode.window.activeTextEditor;
 	async function updateDecorations() {
+
+		const activeEditor = vscode.window.activeTextEditor;
 		if (!activeEditor) {
 			return;
 		}
@@ -45,15 +46,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const fontSize = getCurrentEditorFontSize();
 
-		// const regEx1 = new RegExp('"((?:\\.|[^"])*)"', 'g');
-		// const regEx2 = new RegExp("'((?:\\.|[^'])*)'", 'g');
+		const regEx1 = new RegExp('"((?:\\.|[^"])*)"', 'g');
+		const regEx2 = new RegExp("'((?:\\.|[^'])*)'", 'g');
 
-		const regEx = new RegExp("([\"'])(.+)\\1", 'g');
+		//	const regEx = new RegExp("([\"'])(.+)\\1", 'g');
 
 		const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
 		if (curWorkspaceFolder != null) {
 			const text = activeEditor.document.getText();
-			await matchImage(activeEditor, regEx, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
+			await matchImage(activeEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
+			await matchImage(activeEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 		}
 		activeEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
 	}
@@ -65,7 +67,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const startPos = activeEditor.document.positionAt(match.index);
 			const endPos = activeEditor.document.positionAt(match.index + match[0].length);
 
-			if (match[2].length == 0) {
+			if (match[1].length == 0) {
 				continue;
 			}
 
@@ -74,10 +76,10 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.supportThemeIcons = true;
 			hoverMessage.supportHtml = true;
 
-			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[2]);
+			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
 			if (fs.existsSync(curFilePath)) {
 
-				hoverMessage.appendMarkdown(`[${match[2]}](${vscode.Uri.parse(curFilePath).toString()})`);
+				hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
 				hoverMessage.appendText("\n");
 				if ((!fs.statSync(curFilePath).isFile())) {
 					const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
@@ -85,9 +87,9 @@ export function activate(context: vscode.ExtensionContext) {
 					continue;
 				}
 			} else {
-				curFilePath = match[2];
+				curFilePath = match[1];
 				if (fs.existsSync(curFilePath)) {
-					hoverMessage.appendMarkdown(`[${match[2]}](${vscode.Uri.parse(curFilePath).toString()})`);
+					hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
 					hoverMessage.appendText("\n");
 					if ((!fs.statSync(curFilePath).isFile())) {
 						const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
@@ -284,6 +286,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	let activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor) {
 		triggerUpdateDecorations();
 	}
