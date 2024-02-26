@@ -317,12 +317,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
 			if (matchs1[1] != null) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1]);
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1]);
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1], "1");
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1], "2");
 			}
 			if (matchs2[1] != null && matchs2[1] !== matchs1[1]) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1]);
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1]);
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1], "1");
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1], "2");
 			}
 
 			return tipkeyWorkList;
@@ -333,14 +333,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(pathProvider);
 
-	function buildKeyWorkListFromWorkSpace(tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string) {
+	function buildKeyWorkListFromWorkSpace(tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
 			const completionPath = path.join(folder.uri.fsPath, pathSuffix);
-			buildKeyWorkListFromFile(tipkeyWorkList, completionPath);
+			buildKeyWorkListFromFile(tipkeyWorkList, completionPath, sortText);
 		});
 	}
 
-	function buildKeyWorkListFromFile(tipkeyWorkList: vscode.CompletionItem[], completionPath: string) {
+	function buildKeyWorkListFromFile(tipkeyWorkList: vscode.CompletionItem[], completionPath: string, sortText: string) {
 		if (fs.existsSync(completionPath)) {
 			const childs = fs.readdirSync(completionPath);
 			childs.forEach(element => {
@@ -349,13 +349,14 @@ export function activate(context: vscode.ExtensionContext) {
 					const itemPath = path.join(completionPath, element);
 					if (fs.existsSync(itemPath)) {
 						const itemStat = fs.statSync(itemPath);
+						let completionItem;
 						if (itemStat.isDirectory()) {
-							const completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
-							tipkeyWorkList.push(completionItem);
+							completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
 						} else {
-							const completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
-							tipkeyWorkList.push(completionItem);
+							completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
 						}
+						completionItem.label = sortText + element;
+						tipkeyWorkList.push(completionItem);
 					}
 				}
 			});
