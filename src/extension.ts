@@ -306,7 +306,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}, null, context.subscriptions);
 
 	const pathProvider = vscode.languages.registerCompletionItemProvider(
-		{ scheme: 'file', language: '*', }, {
+		{ language: 'plaintext' }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
 

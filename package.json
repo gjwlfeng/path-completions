@@ -4,6 +4,7 @@
 	"description": "path completion",
 	"version": "0.0.1",
 	"publisher": "zengfeng",
+	"icon": "images/path_logo.png",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
