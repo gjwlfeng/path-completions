@@ -35,12 +35,15 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	async function updateDecorations() {
+	let activeEditor = vscode.window.activeTextEditor;
 
-		const activeEditor = vscode.window.activeTextEditor;
+	async function updateDecorations() {
+		
 		if (!activeEditor) {
 			return;
 		}
+
+		MyLog.getInstance().info('updateDecorations');
 
 		const imageDecorationOptions: vscode.DecorationOptions[] = [];
 
@@ -286,13 +289,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	let activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor) {
 		triggerUpdateDecorations();
 	}
 
 	vscode.window.onDidChangeActiveTextEditor(editor => {
 		activeEditor = editor;
+		MyLog.getInstance().info('onDidChangeActiveTextEditor!');
 		if (editor) {
 			triggerUpdateDecorations();
 		}
@@ -300,13 +303,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 	vscode.workspace.onDidChangeTextDocument(event => {
+		
 		if (activeEditor && event.document === activeEditor.document) {
 			triggerUpdateDecorations(true);
 		}
 	}, null, context.subscriptions);
 
 	const pathProvider = vscode.languages.registerCompletionItemProvider(
-		{ language: 'plaintext' }, {
+		{ scheme: 'file', language: '*' }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
 
