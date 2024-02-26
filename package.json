@@ -1,7 +1,7 @@
 {
-	"name": "path-completions",
+	"name": "path-completion",
 	"displayName": "Path Completions",
-	"description": "path completions",
+	"description": "path completion",
 	"version": "0.0.1",
 	"publisher": "zengfeng",
 	"license": "MIT",

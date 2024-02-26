@@ -7,28 +7,15 @@ import path = require('path');
 import * as vscode from 'vscode';
 import CryptoJS = require('crypto-js');
 import sharp = require('sharp');
+import { MyLog } from './my_log';
 
 const fileMd5Map: Map<string, string> = new Map();
 let timeout: NodeJS.Timer | undefined = undefined;
 
 
-let outputChannel: vscode.LogOutputChannel | undefined = undefined;  // 输出通道
-/**
- * 输出信息到控制台上，输出通道为MyCoder
- * @param message 输出的文本信息
- */
-export function myLog() {
-	if (outputChannel === undefined) {
-		outputChannel = vscode.window.createOutputChannel('path-completions', {
-			log: true,
-		});
-	}
-	return outputChannel;
-}
-
 export function activate(context: vscode.ExtensionContext) {
 
-	myLog().info('path completions is activated');
+	MyLog.getInstance().info('path-completion is activated');
 
 	// create a decorator type that we use to decorate large numbers
 	const iamgeDecorationType = vscode.window.createTextEditorDecorationType({
@@ -92,7 +79,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
 			const tempDir = os.tmpdir();
-			const thumPath = path.join(tempDir, "thum", "path_completions", path.basename(curWorkspaceFolder.name), path.dirname(itemRelativePath), path.basename(itemRelativePath, path.extname(itemRelativePath)) + ".webp");
+			const thumPath = path.join(tempDir, "thum", "path_completion", path.basename(curWorkspaceFolder.name), path.dirname(itemRelativePath), path.basename(itemRelativePath, path.extname(itemRelativePath)) + ".webp");
 
 			const width = Math.floor(fontSize * 1.2);
 			const height = Math.floor(fontSize * 1.2);
@@ -145,7 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
 					fileMd5Map.set(curFilePath, fileMD5);
 					// eslint-disable-next-line no-empty
 				} catch (error) {
-					myLog().error(`metadata:${error}`);
+					MyLog.getInstance().error(`metadata:${error}`);
 				}
 			}
 
@@ -253,7 +240,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const bAverage = bTotal / pixelCount;
 			return new vscode.Color(Math.round(rAverage), Math.round(gAverage), Math.round(bAverage), 255);
 		} catch (error) {
-			myLog().error(`getThemeColors:${error}`);
+			MyLog.getInstance().error(`getThemeColors:${error}`);
 			return undefined;
 		}
 	}
@@ -366,7 +353,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-	myLog().info('path-completions is now deactivate!');
+	MyLog.getInstance().info('path-completion is now deactivate!');
 	fileMd5Map.clear();
 	if (timeout) {
 		clearTimeout(timeout);
