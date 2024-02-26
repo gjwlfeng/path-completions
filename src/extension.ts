@@ -329,6 +329,7 @@ export function activate(context: vscode.ExtensionContext) {
 				const pathPrefix = matchs2[1];
 				if (pathPrefix === ".") {
 					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, matchs2[1], "0");
+					buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, "/", "1");
 				} else if (pathPrefix.trimEnd().endsWith(".")) {
 					const curDirPath = pathPrefix.substring(0, pathPrefix.length);
 					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, curDirPath, "0");
@@ -341,6 +342,7 @@ export function activate(context: vscode.ExtensionContext) {
 				const pathPrefix = matchs3[1];
 				if (pathPrefix.trim() === ".") {
 					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, matchs3[1], "0");
+					buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, "/", "1");
 				} else if (pathPrefix.trimEnd().endsWith(".")) {
 					const curDirPath = pathPrefix.substring(0, pathPrefix.length);
 					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, curDirPath, "0");
@@ -392,7 +394,6 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
 			if(pathSuffix.trim()==="."){
 				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, folder.uri.fsPath+ "/.", sortText);
-				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, "/", sortText);
 			}else if (pathSuffix.endsWith("/.")) {
 				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
 				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, completionPath + "/.", sortText);
