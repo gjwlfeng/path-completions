@@ -69,8 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
 		await matchImage(activeEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 		await matchImage(activeEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 		activeEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
-
-
 	}
 
 	async function matchImage(activeEditor: vscode.TextEditor, regEx: RegExp, text: string, curWorkspaceFolder: vscode.WorkspaceFolder, fontSize: number, imageDecorationOptions: vscode.DecorationOptions[]) {
@@ -116,14 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const oldMd5 = fileMd5Map.get(curFilePath);
 
 			if (fileMD5 !== oldMd5 || !isExistThum) {
-				if (isExistThum) {
-					fs.unlinkSync(thumPath);
-				} else {
-					fs.mkdirSync(path.dirname(thumPath), {
-						recursive: true,
-					});
-				}
-
+				
 				let sharpMetadata: sharp.Metadata | undefined;
 				try {
 					sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
@@ -134,11 +125,15 @@ export function activate(context: vscode.ExtensionContext) {
 						hoverMessage.appendText(`height:${sharpMetadata.height},`);
 						hoverMessage.appendText("\n");
 					}
-					// eslint-disable-next-line no-empty
-				} catch (error) {
-					myLog().error(`metadata:${error}`);
-				}
-				try {
+
+					if (isExistThum) {
+						fs.unlinkSync(thumPath);
+					} else {
+						fs.mkdirSync(path.dirname(thumPath), {
+							recursive: true,
+						});
+					}
+
 					await sharp(fs.readFileSync(curFilePath))
 						.resize(width, height, {
 							fit: sharp.fit.inside,
@@ -150,7 +145,7 @@ export function activate(context: vscode.ExtensionContext) {
 					fileMd5Map.set(curFilePath, fileMD5);
 					// eslint-disable-next-line no-empty
 				} catch (error) {
-					myLog().error(`toFile:${error}`);
+					myLog().error(`metadata:${error}`);
 				}
 			}
 
@@ -245,7 +240,7 @@ export function activate(context: vscode.ExtensionContext) {
 					const b = data[index + 2];
 					const a = data[index + 3];
 
-					if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
+					if (Math.abs(125 - r) > 40 || Math.abs(125 - g) > 40 || Math.abs(125 - b) > 40) {
 						rTotal += r;
 						gTotal += g;
 						bTotal += b;
@@ -366,9 +361,6 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 		}
 	}
-
-
-
 }
 
 export function deactivate() {

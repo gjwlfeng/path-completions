@@ -12,7 +12,7 @@ const CryptoJS = require("crypto-js");
 const sharp = require("sharp");
 const fileMd5Map = new Map();
 let timeout = undefined;
-let outputChannel; // 输出通道
+let outputChannel = undefined; // 输出通道
 /**
  * 输出信息到控制台上，输出通道为MyCoder
  * @param message 输出的文本信息
@@ -95,14 +95,6 @@ function activate(context) {
             const fileMD5 = CryptoJS.MD5(wordArray).toString();
             const oldMd5 = fileMd5Map.get(curFilePath);
             if (fileMD5 !== oldMd5 || !isExistThum) {
-                if (isExistThum) {
-                    fs.unlinkSync(thumPath);
-                }
-                else {
-                    fs.mkdirSync(path.dirname(thumPath), {
-                        recursive: true,
-                    });
-                }
                 let sharpMetadata;
                 try {
                     sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
@@ -112,12 +104,14 @@ function activate(context) {
                         hoverMessage.appendText(`height:${sharpMetadata.height},`);
                         hoverMessage.appendText("\n");
                     }
-                    // eslint-disable-next-line no-empty
-                }
-                catch (error) {
-                    myLog().error(`metadata:${error}`);
-                }
-                try {
+                    if (isExistThum) {
+                        fs.unlinkSync(thumPath);
+                    }
+                    else {
+                        fs.mkdirSync(path.dirname(thumPath), {
+                            recursive: true,
+                        });
+                    }
                     await sharp(fs.readFileSync(curFilePath))
                         .resize(width, height, {
                         fit: sharp.fit.inside,
@@ -129,7 +123,7 @@ function activate(context) {
                     // eslint-disable-next-line no-empty
                 }
                 catch (error) {
-                    myLog().error(`toFile:${error}`);
+                    myLog().error(`metadata:${error}`);
                 }
             }
             if (fs.existsSync(thumPath) && fs.statSync(thumPath).isFile()) {
@@ -137,7 +131,7 @@ function activate(context) {
                 hoverMessage.appendText("\n");
                 const themeColor = await getThemeColors(thumPath);
                 let invertedColor;
-                if (themeColor != null) {
+                if (themeColor !== undefined) {
                     invertedColor = getInvertdColor(themeColor);
                 }
                 const borderColor = themeColor ? `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}` : "darkblue";
@@ -210,7 +204,7 @@ function activate(context) {
                     const g = data[index + 1];
                     const b = data[index + 2];
                     const a = data[index + 3];
-                    if (Math.abs(125 - r) > 30 || Math.abs(125 - g) > 30 || Math.abs(125 - b) > 30) {
+                    if (Math.abs(125 - r) > 40 || Math.abs(125 - g) > 40 || Math.abs(125 - b) > 40) {
                         rTotal += r;
                         gTotal += g;
                         bTotal += b;
