@@ -294,14 +294,16 @@ export function activate(context: vscode.ExtensionContext) {
 		{ scheme: 'file', language: '*', }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
-			const regExp1 = RegExp('"((?:\\.|[^"])*/)');
-			const regExp2 = RegExp("'((?:\\.|[^'])*/)");
+			const regExp1 = RegExp('"((?:\\.|[^"])*/$)');
+			const regExp2 = RegExp("'((?:\\.|[^'])*/$)");
+			const regExp3 = RegExp('(?:"|\')(.*\\.$)');
+			
 			const matchs1 = regExp1.exec(linePrefix) || [];
 			const matchs2 = regExp2.exec(linePrefix) || [];
-			if (matchs1.length == 0 && matchs2.length == 0) {
+			const matchs3 = regExp3.exec(linePrefix) || [];
+			if (matchs1.length == 0 && matchs2.length == 0 && matchs3.length == 0) {
 				return undefined;
 			}
-
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
 			if (matchs1[1] != null) {
 				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1], "a");
@@ -310,6 +312,11 @@ export function activate(context: vscode.ExtensionContext) {
 			if (matchs2[1] != null && matchs2[1] !== matchs1[1]) {
 				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1], "a");
 				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1], "b");
+			}
+
+			if (matchs3[1] != null && matchs3[1] !== matchs2[1]) {
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs3[1], "a");
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs3[1], "b");
 			}
 
 			return tipkeyWorkList;
