@@ -317,12 +317,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
 			if (matchs1[1] != null) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1], "1");
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1], "2");
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1], "a");
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1], "b");
 			}
 			if (matchs2[1] != null && matchs2[1] !== matchs1[1]) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1], "1");
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1], "2");
+				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1], "a");
+				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1], "b");
 			}
 
 			return tipkeyWorkList;
@@ -355,7 +355,8 @@ export function activate(context: vscode.ExtensionContext) {
 						} else {
 							completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
 						}
-						completionItem.label = sortText + element;
+						completionItem.sortText = sortText + element;
+						completionItem.detail = itemPath;
 						tipkeyWorkList.push(completionItem);
 					}
 				}
