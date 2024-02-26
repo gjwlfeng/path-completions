@@ -314,19 +314,34 @@ export function activate(context: vscode.ExtensionContext) {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
 
-			const regExp3 = RegExp('(?:"|\')(.*(?:\\.|/)$)');
+			const regExp2 = RegExp('\'((?:\\.|[^\']*)(?:\\.|/)$)');
+			const regExp3 = RegExp("\"((?:\\.|[^\"]*)(?:\\.|/)$)");
+			const matchs2 = regExp2.exec(linePrefix) || [];
 			const matchs3 = regExp3.exec(linePrefix) || [];
-			if (matchs3.length == 0) {
+			if (matchs2.length == 0 && matchs3.length==0) {
 				return undefined;
 			}
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
 
-			const pathPrefix = matchs3[1];
+			
 
-			if (matchs3[1].length > 0) {
+			if (matchs2.length > 0) {
+				const pathPrefix = matchs2[1];
 				if (pathPrefix === ".") {
-					buildKeyWorkListFromWorkSpace(position, tipkeyWorkList, matchs3[1], "0");
-				} else if (pathPrefix.endsWith(".")) {
+					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, matchs2[1], "0");
+				} else if (pathPrefix.trimEnd().endsWith(".")) {
+					const curDirPath = pathPrefix.substring(0, pathPrefix.length);
+					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, curDirPath, "0");
+					buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, curDirPath, "1");
+				} else {
+					buildKeyWorkListFromWorkSpace(position, tipkeyWorkList, matchs2[1], "0");
+					buildKeyWorkListFromFile(position, tipkeyWorkList, matchs2[1], "1");
+				}
+			}else if (matchs3.length > 0) {
+				const pathPrefix = matchs3[1];
+				if (pathPrefix.trim() === ".") {
+					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, matchs3[1], "0");
+				} else if (pathPrefix.trimEnd().endsWith(".")) {
 					const curDirPath = pathPrefix.substring(0, pathPrefix.length);
 					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, curDirPath, "0");
 					buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, curDirPath, "1");
@@ -375,8 +390,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	function buildKeyWorkListFromWorkSpaceFileSuffix(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
-
-			if (pathSuffix.endsWith("/.")) {
+			if(pathSuffix.trim()==="."){
+				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, folder.uri.fsPath+ "/.", sortText);
+				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, "/", sortText);
+			}else if (pathSuffix.endsWith("/.")) {
 				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
 				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, completionPath + "/.", sortText);
 			} else {
