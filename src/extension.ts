@@ -92,7 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.appendText("\n");
 
 
-			const isExistThum = fs.existsSync(thumPath);
+
 
 			const fileContent = fs.readFileSync(curFilePath);
 			const wordArray = CryptoJS.lib.WordArray.create(fileContent);
@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const oldMd5 = fileMd5Map.get(curFilePath);
 
-			if (fileMD5 !== oldMd5 || !isExistThum) {
+			if (fileMD5 !== oldMd5) {
 
 				let sharpMetadata: sharp.Metadata | undefined;
 				try {
@@ -113,6 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
 						hoverMessage.appendText("\n");
 					}
 
+					const isExistThum = fs.existsSync(thumPath);
 					if (isExistThum) {
 						fs.unlinkSync(thumPath);
 					} else {
@@ -289,36 +290,33 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}, null, context.subscriptions);
 
-
 	const pathProvider = vscode.languages.registerCompletionItemProvider(
 		{ scheme: 'file', language: '*', }, {
 		provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
 			const linePrefix = document.lineAt(position).text.slice(0, position.character);
-			const regExp1 = RegExp('"((?:\\.|[^"])*/$)');
-			const regExp2 = RegExp("'((?:\\.|[^'])*/$)");
-			const regExp3 = RegExp('(?:"|\')(.*\\.$)');
-			
-			const matchs1 = regExp1.exec(linePrefix) || [];
-			const matchs2 = regExp2.exec(linePrefix) || [];
+
+			const regExp3 = RegExp('(?:"|\')(.*(?:\\.|/)$)');
 			const matchs3 = regExp3.exec(linePrefix) || [];
-			if (matchs1.length == 0 && matchs2.length == 0 && matchs3.length == 0) {
+			if (matchs3.length == 0) {
 				return undefined;
 			}
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
-			if (matchs1[1] != null) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs1[1], "a");
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs1[1], "b");
-			}
-			if (matchs2[1] != null && matchs2[1] !== matchs1[1]) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs2[1], "a");
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs2[1], "b");
-			}
 
-			if (matchs3[1] != null && matchs3[1] !== matchs2[1]) {
-				buildKeyWorkListFromWorkSpace(tipkeyWorkList, matchs3[1], "a");
-				buildKeyWorkListFromFile(tipkeyWorkList, matchs3[1], "b");
-			}
+			const pathPrefix = matchs3[1];
 
+			if (matchs3[1].length > 0) {
+				if (pathPrefix === ".") {
+					buildKeyWorkListFromWorkSpace(position, tipkeyWorkList, matchs3[1], "0");
+				} else if (pathPrefix.endsWith(".")) {
+					const curDirPath = pathPrefix.substring(0, pathPrefix.length);
+					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, curDirPath, "0");
+					buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, curDirPath, "1");
+				} else {
+					buildKeyWorkListFromWorkSpace(position, tipkeyWorkList, matchs3[1], "0");
+					buildKeyWorkListFromFile(position, tipkeyWorkList, matchs3[1], "1");
+				}
+			}
+			MyLog.getInstance().info(`tipkeyWorkList=${tipkeyWorkList.length}`);
 			return tipkeyWorkList;
 		}
 	},
@@ -327,32 +325,72 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(pathProvider);
 
-	function buildKeyWorkListFromWorkSpace(tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
+	function buildKeyWorkListFromWorkSpace(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
 			const completionPath = path.join(folder.uri.fsPath, pathSuffix);
-			buildKeyWorkListFromFile(tipkeyWorkList, completionPath, sortText);
+			buildKeyWorkListFromFile(position, tipkeyWorkList, completionPath, sortText);
 		});
 	}
 
-	function buildKeyWorkListFromFile(tipkeyWorkList: vscode.CompletionItem[], completionPath: string, sortText: string) {
+	function buildKeyWorkListFromFile(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], completionPath: string, sortText: string) {
 		if (fs.existsSync(completionPath)) {
 			const childs = fs.readdirSync(completionPath);
 			childs.forEach(element => {
-
-				if (!element.startsWith(".")) {
-					const itemPath = path.join(completionPath, element);
-					if (fs.existsSync(itemPath)) {
-						const itemStat = fs.statSync(itemPath);
-						let completionItem;
-						if (itemStat.isDirectory()) {
-							completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
-						} else {
-							completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
-						}
-						completionItem.sortText = sortText + element;
-						completionItem.detail = itemPath;
-						tipkeyWorkList.push(completionItem);
+				const itemPath = path.join(completionPath, element);
+				if (fs.existsSync(itemPath)) {
+					const itemStat = fs.statSync(itemPath);
+					let completionItem;
+					if (itemStat.isDirectory()) {
+						completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
+					} else {
+						completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
 					}
+					completionItem.sortText = sortText + element;
+					completionItem.detail = itemPath;
+					tipkeyWorkList.push(completionItem);
+				}
+			});
+		}
+	}
+
+	function buildKeyWorkListFromWorkSpaceFileSuffix(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
+		vscode.workspace.workspaceFolders?.forEach(folder => {
+
+			if (pathSuffix.endsWith("/.")) {
+				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
+				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, completionPath + "/.", sortText);
+			} else {
+				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
+				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, completionPath, sortText);
+			}
+
+		});
+	}
+
+	function buildKeyWorkListFromFileSuffix(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], completionPath: string, sortText: string) {
+		const curDir = path.dirname(completionPath);
+		const fileName = path.basename(completionPath);
+
+		if (fs.existsSync(curDir)) {
+			const childs = fs.readdirSync(curDir);
+			childs.forEach(element => {
+				const itemPath = path.join(curDir, element);
+				if (fs.existsSync(itemPath)) {
+
+					const itemStat = fs.statSync(itemPath);
+					let completionItem;
+					if (itemStat.isDirectory()) {
+						completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.Folder);
+					} else {
+						completionItem = new vscode.CompletionItem(element, vscode.CompletionItemKind.File);
+					}
+					completionItem.sortText = sortText + element;
+					completionItem.detail = element;
+					completionItem.insertText = element;
+					const range = new vscode.Range(new vscode.Position(position.line, position.character - fileName.length), position);
+					completionItem.additionalTextEdits = [vscode.TextEdit.delete(range)];
+					tipkeyWorkList.push(completionItem);
+
 				}
 			});
 		}
