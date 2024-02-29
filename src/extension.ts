@@ -12,7 +12,6 @@ import { MyLog } from './my_log';
 const fileMd5Map: Map<string, string> = new Map();
 let timeout: NodeJS.Timer | undefined = undefined;
 
-
 export function activate(context: vscode.ExtensionContext) {
 
 	MyLog.getInstance().info('path-completion is activated');
@@ -35,11 +34,10 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	let activeEditor = vscode.window.activeTextEditor;
+	
+	async function updateDecorations(textEditor:vscode.TextEditor | undefined) {
 
-	async function updateDecorations() {
-
-		if (!activeEditor) {
+		if (!textEditor) {
 			return;
 		}
 
@@ -54,21 +52,21 @@ export function activate(context: vscode.ExtensionContext) {
 
 		//	const regEx = new RegExp("([\"'])(.+)\\1", 'g');
 
-		const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+		const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(textEditor.document.uri);
 		if (curWorkspaceFolder != null) {
-			const text = activeEditor.document.getText();
-			await matchImage(activeEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
-			await matchImage(activeEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
+			const text = textEditor.document.getText();
+			await matchImage(textEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
+			await matchImage(textEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 		}
-		activeEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
+		textEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
 	}
 
-	async function matchImage(activeEditor: vscode.TextEditor, regEx: RegExp, text: string, curWorkspaceFolder: vscode.WorkspaceFolder, fontSize: number, imageDecorationOptions: vscode.DecorationOptions[]) {
+	async function matchImage(textEditor: vscode.TextEditor, regEx: RegExp, text: string, curWorkspaceFolder: vscode.WorkspaceFolder, fontSize: number, imageDecorationOptions: vscode.DecorationOptions[]) {
 		let match;
 
 		while ((match = regEx.exec(text))) {
-			const startPos = activeEditor.document.positionAt(match.index);
-			const endPos = activeEditor.document.positionAt(match.index + match[0].length);
+			const startPos = textEditor.document.positionAt(match.index);
+			const endPos = textEditor.document.positionAt(match.index + match[0].length);
 
 			if (match[1].length == 0) {
 				continue;
@@ -151,7 +149,7 @@ export function activate(context: vscode.ExtensionContext) {
 					fileMd5Map.set(curFilePath, fileMD5);
 					// eslint-disable-next-line no-empty
 				} catch (error) {
-					MyLog.getInstance().error(`metadata:${error}`);
+					MyLog.getInstance().error(`metadata:${path.basename(curFilePath)}-${error}`);
 				}
 			}
 
@@ -278,28 +276,30 @@ export function activate(context: vscode.ExtensionContext) {
 		return config.get<number>('fontSize') || 14;
 	}
 
-	function triggerUpdateDecorations(throttle = false) {
+	function triggerUpdateDecorations(textEditor:vscode.TextEditor | undefined,throttle = false) {
 		MyLog.getInstance().info(`triggerUpdateDecorations`);
 		if (timeout) {
 			clearTimeout(timeout);
 			timeout = undefined;
 		}
 		if (throttle) {
-			timeout = setTimeout(updateDecorations, 1000);
+			timeout = setTimeout(()=>{
+				updateDecorations(textEditor);
+			}, 1000);
 		} else {
-			updateDecorations();
+			updateDecorations(textEditor);
 		}
 	}
 
+	const activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor && canUpdate(activeEditor.document)) {
-		triggerUpdateDecorations();
+		triggerUpdateDecorations(activeEditor);
 	}
 
 	vscode.window.onDidChangeActiveTextEditor(editor => {
-		activeEditor = editor;
 		MyLog.getInstance().info('onDidChangeActiveTextEditor!');
 		if (editor && canUpdate(editor.document)) {
-			triggerUpdateDecorations();
+			triggerUpdateDecorations(editor);
 		}
 	}, null, context.subscriptions);
 
@@ -307,10 +307,11 @@ export function activate(context: vscode.ExtensionContext) {
 	//todo
 	const schemes: string[] = [];
 	vscode.workspace.onDidChangeTextDocument(event => {
+		const activeEditor = vscode.window.activeTextEditor;
 		if (canUpdate(event.document)) {
 			MyLog.getInstance().info(`onDidChangeTextDocument`);
 			if (activeEditor && event.document === activeEditor.document) {
-				triggerUpdateDecorations(true);
+				triggerUpdateDecorations(activeEditor,true);
 			}
 		} else {
 			const curScheme = event.document.uri.scheme;
