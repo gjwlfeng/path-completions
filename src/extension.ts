@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let activeEditor = vscode.window.activeTextEditor;
 
 	async function updateDecorations() {
-		
+
 		if (!activeEditor) {
 			return;
 		}
@@ -73,6 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (match[1].length == 0) {
 				continue;
 			}
+			//MyLog.getInstance().info(`match=${match[0]+"-"+[match[1]]}`);
 
 			const hoverMessage: vscode.MarkdownString = new vscode.MarkdownString();
 			hoverMessage.isTrusted = true;
@@ -278,6 +279,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	function triggerUpdateDecorations(throttle = false) {
+		MyLog.getInstance().info(`triggerUpdateDecorations`);
 		if (timeout) {
 			clearTimeout(timeout);
 			timeout = undefined;
@@ -289,24 +291,35 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	if (activeEditor) {
+	if (activeEditor && canUpdate(activeEditor.document)) {
 		triggerUpdateDecorations();
 	}
 
 	vscode.window.onDidChangeActiveTextEditor(editor => {
 		activeEditor = editor;
 		MyLog.getInstance().info('onDidChangeActiveTextEditor!');
-		if (editor) {
+		if (editor && canUpdate(editor.document)) {
 			triggerUpdateDecorations();
 		}
 	}, null, context.subscriptions);
 
 
+	//todo
+	const schemes: string[] = [];
 	vscode.workspace.onDidChangeTextDocument(event => {
-		
-		if (activeEditor && event.document === activeEditor.document) {
-			triggerUpdateDecorations(true);
+		if (canUpdate(event.document)) {
+			MyLog.getInstance().info(`onDidChangeTextDocument`);
+			if (activeEditor && event.document === activeEditor.document) {
+				triggerUpdateDecorations(true);
+			}
+		} else {
+			const curScheme = event.document.uri.scheme;
+			if (!schemes.includes(curScheme)) {
+				schemes.push(curScheme);
+				MyLog.getInstance().info(`scheme=${schemes.join(",")}`);
+			}
 		}
+
 	}, null, context.subscriptions);
 
 	const pathProvider = vscode.languages.registerCompletionItemProvider(
@@ -318,12 +331,11 @@ export function activate(context: vscode.ExtensionContext) {
 			const regExp3 = RegExp("\"((?:\\.|[^\"]*)(?:\\.|/)$)");
 			const matchs2 = regExp2.exec(linePrefix) || [];
 			const matchs3 = regExp3.exec(linePrefix) || [];
-			if (matchs2.length == 0 && matchs3.length==0) {
+			if (matchs2.length == 0 && matchs3.length == 0) {
 				return undefined;
 			}
 			const tipkeyWorkList: vscode.CompletionItem[] = [];
 
-			
 
 			if (matchs2.length > 0) {
 				const pathPrefix = matchs2[1];
@@ -338,7 +350,7 @@ export function activate(context: vscode.ExtensionContext) {
 					buildKeyWorkListFromWorkSpace(position, tipkeyWorkList, matchs2[1], "0");
 					buildKeyWorkListFromFile(position, tipkeyWorkList, matchs2[1], "1");
 				}
-			}else if (matchs3.length > 0) {
+			} else if (matchs3.length > 0) {
 				const pathPrefix = matchs3[1];
 				if (pathPrefix.trim() === ".") {
 					buildKeyWorkListFromWorkSpaceFileSuffix(position, tipkeyWorkList, matchs3[1], "0");
@@ -360,6 +372,15 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(pathProvider);
+
+	//是否可以更新
+	function canUpdate(document: vscode.TextDocument | undefined): boolean {
+		if (document === undefined) {
+			return false;
+		}
+		return document.uri.scheme === 'file';
+	}
+
 
 	function buildKeyWorkListFromWorkSpace(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
@@ -392,9 +413,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	function buildKeyWorkListFromWorkSpaceFileSuffix(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
-			if(pathSuffix.trim()==="."){
-				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, folder.uri.fsPath+ "/.", sortText);
-			}else if (pathSuffix.endsWith("/.")) {
+			if (pathSuffix.trim() === ".") {
+				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, folder.uri.fsPath + "/.", sortText);
+			} else if (pathSuffix.endsWith("/.")) {
 				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
 				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, completionPath + "/.", sortText);
 			} else {
