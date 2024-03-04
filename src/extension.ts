@@ -9,7 +9,7 @@ import CryptoJS = require('crypto-js');
 import sharp = require('sharp');
 import { MyLog } from './my_log';
 
-const fileMd5Map: Map<string, string> = new Map();
+const fileMd5Map: Map<string, ImageInfo> = new Map();
 let timeout: NodeJS.Timer | undefined = undefined;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -34,8 +34,8 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	
-	async function updateDecorations(textEditor:vscode.TextEditor | undefined) {
+
+	async function updateDecorations(textEditor: vscode.TextEditor | undefined) {
 
 		if (!textEditor) {
 			return;
@@ -54,9 +54,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(textEditor.document.uri);
 		if (curWorkspaceFolder != null) {
+			const startTime = new Date().getMilliseconds();
 			const text = textEditor.document.getText();
 			await matchImage(textEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
 			await matchImage(textEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
+			const endTime = new Date().getMilliseconds();
+			MyLog.getInstance().info(`matchImage=${endTime - startTime}`);
+
 		}
 		textEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
 	}
@@ -79,8 +83,12 @@ export function activate(context: vscode.ExtensionContext) {
 			hoverMessage.supportHtml = true;
 
 			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
-			if (fs.existsSync(curFilePath)) {
+			if (!fs.existsSync(curFilePath)) {
+				curFilePath = match[1];
 
+			}
+
+			if (fs.existsSync(curFilePath)) {
 				hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
 				hoverMessage.appendText("\n");
 				if ((!fs.statSync(curFilePath).isFile())) {
@@ -89,18 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
 					continue;
 				}
 			} else {
-				curFilePath = match[1];
-				if (fs.existsSync(curFilePath)) {
-					hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
-					hoverMessage.appendText("\n");
-					if ((!fs.statSync(curFilePath).isFile())) {
-						const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
-						imageDecorationOptions.push(decoration);
-						continue;
-					}
-				} else {
-					continue;
-				}
+				continue;
 			}
 
 			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
@@ -114,21 +111,10 @@ export function activate(context: vscode.ExtensionContext) {
 			const wordArray = CryptoJS.lib.WordArray.create(fileContent);
 			const fileMD5 = CryptoJS.MD5(wordArray).toString();
 
-			const oldMd5 = fileMd5Map.get(curFilePath);
+			let imageInfo = fileMd5Map.get(curFilePath);
 
-			if (fileMD5 !== oldMd5) {
-
-				let sharpMetadata: sharp.Metadata | undefined;
+			if (fileMD5 !== imageInfo?.md5) {
 				try {
-					sharpMetadata = await sharp(fs.readFileSync(curFilePath)).metadata();
-
-					if (sharpMetadata != null && sharpMetadata.width !== undefined && sharpMetadata.height !== undefined) {
-						hoverMessage.appendText(`width:${sharpMetadata.width},`);
-						hoverMessage.appendText("\n");
-						hoverMessage.appendText(`height:${sharpMetadata.height},`);
-						hoverMessage.appendText("\n");
-					}
-
 					const isExistThum = fs.existsSync(thumPath);
 					if (isExistThum) {
 						fs.unlinkSync(thumPath);
@@ -138,20 +124,45 @@ export function activate(context: vscode.ExtensionContext) {
 						});
 					}
 
+					let originWidth: number | undefined;
+					let originHeight: number | undefined;
+
 					await sharp(fs.readFileSync(curFilePath))
+						.metadata((err: Error, metadata: sharp.Metadata) => {
+							if (metadata != null && metadata.width !== undefined && metadata.height !== undefined) {
+								originWidth = metadata.width;
+								originHeight = metadata.height;
+							}
+						})
 						.resize(width, height, {
 							fit: sharp.fit.inside,
 						})
 						.webp()
 						.toFile(thumPath);
 
+					imageInfo = {
+						md5: fileMD5, path: curFilePath,
+						width: originWidth,
+						height: originHeight,
+					};
 					//保存新的md5
-					fileMd5Map.set(curFilePath, fileMD5);
+					fileMd5Map.set(curFilePath, imageInfo);
 					// eslint-disable-next-line no-empty
+					hoverMessage.appendText(`width:${imageInfo?.width},`);
+					hoverMessage.appendText("\n");
+					hoverMessage.appendText(`height:${imageInfo?.height},`);
+					hoverMessage.appendText("\n");
 				} catch (error) {
 					MyLog.getInstance().error(`metadata:${path.basename(curFilePath)}-${error}`);
 				}
+			} else {
+				hoverMessage.appendText(`width:${imageInfo?.width},`);
+				hoverMessage.appendText("\n");
+				hoverMessage.appendText(`height:${imageInfo?.height},`);
+				hoverMessage.appendText("\n");
 			}
+
+
 
 			if (fs.existsSync(thumPath) && fs.statSync(thumPath).isFile()) {
 
@@ -276,14 +287,14 @@ export function activate(context: vscode.ExtensionContext) {
 		return config.get<number>('fontSize') || 14;
 	}
 
-	function triggerUpdateDecorations(textEditor:vscode.TextEditor | undefined,throttle = false) {
+	function triggerUpdateDecorations(textEditor: vscode.TextEditor | undefined, throttle = false) {
 		MyLog.getInstance().info(`triggerUpdateDecorations`);
 		if (timeout) {
 			clearTimeout(timeout);
 			timeout = undefined;
 		}
 		if (throttle) {
-			timeout = setTimeout(()=>{
+			timeout = setTimeout(() => {
 				updateDecorations(textEditor);
 			}, 1000);
 		} else {
@@ -297,8 +308,8 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	vscode.window.onDidChangeActiveTextEditor(editor => {
-		MyLog.getInstance().info('onDidChangeActiveTextEditor!');
 		if (editor && canUpdate(editor.document)) {
+			MyLog.getInstance().info('onDidChangeActiveTextEditor!');
 			triggerUpdateDecorations(editor);
 		}
 	}, null, context.subscriptions);
@@ -307,11 +318,12 @@ export function activate(context: vscode.ExtensionContext) {
 	//todo
 	const schemes: string[] = [];
 	vscode.workspace.onDidChangeTextDocument(event => {
-		const activeEditor = vscode.window.activeTextEditor;
+
 		if (canUpdate(event.document)) {
 			MyLog.getInstance().info(`onDidChangeTextDocument`);
+			const activeEditor = vscode.window.activeTextEditor;
 			if (activeEditor && event.document === activeEditor.document) {
-				triggerUpdateDecorations(activeEditor,true);
+				triggerUpdateDecorations(activeEditor, true);
 			}
 		} else {
 			const curScheme = event.document.uri.scheme;
@@ -467,3 +479,11 @@ export function deactivate() {
 }
 
 
+
+interface ImageInfo {
+	md5: string;
+	path: string;
+	height: number | undefined;
+	width: number | undefined;
+
+}
