@@ -8,7 +8,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": ""
+		"url": "https://github.com/gjwlfeng/path-completions.git"
 	},
 	"engines": {
 		"vscode": "^1.73.0"
