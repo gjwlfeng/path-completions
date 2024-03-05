@@ -5,335 +5,18 @@ import fs = require('fs');
 import os = require('os');
 import path = require('path');
 import * as vscode from 'vscode';
-import CryptoJS = require('crypto-js');
-import sharp = require('sharp');
-import { MyLog } from './my_log';
+//import { MyLog } from './my_log';
 
-const fileMd5Map: Map<string, ImageInfo> = new Map();
-let timeout: NodeJS.Timer | undefined = undefined;
 
 export function activate(context: vscode.ExtensionContext) {
 
-	MyLog.getInstance().info('path-completion is activated');
+	//MyLog.getInstance().info('path-completion is activated');
 
-	// create a decorator type that we use to decorate large numbers
-	const iamgeDecorationType = vscode.window.createTextEditorDecorationType({
-		// use a themable color. See package.json for the declaration and default values.
-		//backgroundColor: { id: 'myextension.largeNumberBackground' },
-		overviewRulerLane: vscode.OverviewRulerLane.Right,
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		overviewRulerColor: 'blue',
-		light: {
-			// this color will be used in light color themes
-			borderColor: 'darkblue'
-		},
-		dark: {
-			// this color will be used in dark color themes
-			borderColor: 'lightblue'
-		}
+	let isShowHiddenFiles: boolean = getIsShowHiddenFiles();
+	const changeConfigDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
+		isShowHiddenFiles = getIsShowHiddenFiles();
+		//MyLog.getInstance().info(`onDidChangeConfiguration,isShowHiddenFiles=${isShowHiddenFiles}`);
 	});
-
-
-	async function updateDecorations(textEditor: vscode.TextEditor | undefined) {
-
-		if (!textEditor) {
-			return;
-		}
-
-		MyLog.getInstance().info('updateDecorations');
-
-		const imageDecorationOptions: vscode.DecorationOptions[] = [];
-
-		const fontSize = getCurrentEditorFontSize();
-
-		const regEx1 = new RegExp('"((?:\\.|[^"])*)"', 'g');
-		const regEx2 = new RegExp("'((?:\\.|[^'])*)'", 'g');
-
-		//	const regEx = new RegExp("([\"'])(.+)\\1", 'g');
-
-		const curWorkspaceFolder = vscode.workspace.getWorkspaceFolder(textEditor.document.uri);
-		if (curWorkspaceFolder != null) {
-			const startTime = new Date().getMilliseconds();
-			const text = textEditor.document.getText();
-			await matchImage(textEditor, regEx1, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
-			await matchImage(textEditor, regEx2, text, curWorkspaceFolder, fontSize, imageDecorationOptions);
-			const endTime = new Date().getMilliseconds();
-			MyLog.getInstance().info(`matchImage=${endTime - startTime}`);
-
-		}
-		textEditor.setDecorations(iamgeDecorationType, imageDecorationOptions);
-	}
-
-	async function matchImage(textEditor: vscode.TextEditor, regEx: RegExp, text: string, curWorkspaceFolder: vscode.WorkspaceFolder, fontSize: number, imageDecorationOptions: vscode.DecorationOptions[]) {
-		let match;
-
-		while ((match = regEx.exec(text))) {
-			const startPos = textEditor.document.positionAt(match.index);
-			const endPos = textEditor.document.positionAt(match.index + match[0].length);
-
-			if (match[1].length == 0) {
-				continue;
-			}
-			//MyLog.getInstance().info(`match=${match[0]+"-"+[match[1]]}`);
-
-			const hoverMessage: vscode.MarkdownString = new vscode.MarkdownString();
-			hoverMessage.isTrusted = true;
-			hoverMessage.supportThemeIcons = true;
-			hoverMessage.supportHtml = true;
-
-			let curFilePath = path.join(curWorkspaceFolder.uri.fsPath, match[1]);
-			if (!fs.existsSync(curFilePath)) {
-				curFilePath = match[1];
-
-			}
-
-			if (fs.existsSync(curFilePath)) {
-				hoverMessage.appendMarkdown(`[${match[1]}](${vscode.Uri.parse(curFilePath).toString()})`);
-				hoverMessage.appendText("\n");
-				if ((!fs.statSync(curFilePath).isFile())) {
-					const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
-					imageDecorationOptions.push(decoration);
-					continue;
-				}
-			} else {
-				continue;
-			}
-
-			const itemRelativePath = path.relative(curWorkspaceFolder.uri.fsPath, curFilePath);
-			const tempDir = os.tmpdir();
-			const thumPath = path.join(tempDir, "thum", "path_completion", path.basename(curWorkspaceFolder.name), path.dirname(itemRelativePath), path.basename(itemRelativePath, path.extname(itemRelativePath)) + ".webp");
-
-			const width = Math.floor(fontSize * 1.2);
-			const height = Math.floor(fontSize * 1.2);
-
-			const fileContent = fs.readFileSync(curFilePath);
-			const wordArray = CryptoJS.lib.WordArray.create(fileContent);
-			const fileMD5 = CryptoJS.MD5(wordArray).toString();
-
-			let imageInfo = fileMd5Map.get(curFilePath);
-
-			if (fileMD5 !== imageInfo?.md5) {
-				try {
-					const isExistThum = fs.existsSync(thumPath);
-					if (isExistThum) {
-						fs.unlinkSync(thumPath);
-					} else {
-						fs.mkdirSync(path.dirname(thumPath), {
-							recursive: true,
-						});
-					}
-
-					let originWidth: number | undefined;
-					let originHeight: number | undefined;
-
-					await sharp(fs.readFileSync(curFilePath))
-						.metadata((err: Error, metadata: sharp.Metadata) => {
-							if (metadata != null && metadata.width !== undefined && metadata.height !== undefined) {
-								originWidth = metadata.width;
-								originHeight = metadata.height;
-							}
-						})
-						.resize(width, height, {
-							fit: sharp.fit.inside,
-						})
-						.webp()
-						.toFile(thumPath);
-
-					imageInfo = {
-						md5: fileMD5, path: curFilePath,
-						width: originWidth,
-						height: originHeight,
-					};
-					//保存新的md5
-					fileMd5Map.set(curFilePath, imageInfo);
-					// eslint-disable-next-line no-empty
-					hoverMessage.appendText(`width:${imageInfo?.width},`);
-					hoverMessage.appendText("\n");
-					hoverMessage.appendText(`height:${imageInfo?.height},`);
-					hoverMessage.appendText("\n");
-				} catch (error) {
-					MyLog.getInstance().error(`metadata:${path.basename(curFilePath)}-${error}`);
-				}
-			} else {
-				hoverMessage.appendText(`width:${imageInfo?.width},`);
-				hoverMessage.appendText("\n");
-				hoverMessage.appendText(`height:${imageInfo?.height},`);
-				hoverMessage.appendText("\n");
-			}
-
-
-
-			if (fs.existsSync(thumPath) && fs.statSync(thumPath).isFile()) {
-
-				hoverMessage.appendMarkdown(`![](${vscode.Uri.parse(curFilePath).toString()})`);
-				hoverMessage.appendText("\n");
-
-				const themeColor = await getThemeColors(thumPath);
-				let invertedColor;
-				if (themeColor !== undefined) {
-					invertedColor = getInvertdColor(themeColor);
-				}
-
-				const borderColor = themeColor ? `#${padZeroHex(themeColor.red)}${padZeroHex(themeColor.green)}${padZeroHex(themeColor.blue)}` : "darkblue";
-				const backgroundColor = invertedColor ? `#${padZeroHex(invertedColor.red)}${padZeroHex(invertedColor.green)}${padZeroHex(invertedColor.blue)}` : "darkblue";
-
-				const decoration = {
-					hoverMessage: hoverMessage,
-					range: new vscode.Range(startPos, endPos), renderOptions: {
-						light: {
-							before: {
-								contentIconPath: vscode.Uri.file(thumPath),
-								//border: '2px solid green',
-								margin: '0px 4px 0px 0px',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								width: `${fontSize + 4}px`,
-								height: `${fontSize + 4}px`,
-								borderColor: borderColor,
-								backgroundColor: backgroundColor,
-								// borderColor: 'darkblue',
-								// backgroundColor: 'darkblue',
-							}
-						},
-						dark: {
-							before: {
-								contentIconPath: vscode.Uri.file(thumPath),
-								//border: '2px solid green',
-								margin: '0px 4px 0px 0px',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								width: `${fontSize + 4}px`,
-								height: `${fontSize + 4}px`,
-								borderColor: borderColor,
-								backgroundColor: backgroundColor,
-								// borderColor: 'darkblue',
-								// backgroundColor: 'darkblue',
-							}
-						}
-					}
-				};
-				imageDecorationOptions.push(decoration);
-
-			} else {
-				const decoration = { hoverMessage: hoverMessage, range: new vscode.Range(startPos, endPos), };
-				imageDecorationOptions.push(decoration);
-			}
-		}
-	}
-
-	function padZeroHex(num: number) {
-		const hex = num.toString(16).toUpperCase(); // 转换为大写十六进制
-		return hex.length === 1 ? '0' + hex : hex; // 如果长度为1，则补零
-	}
-
-	async function getThemeColors(imagePath: string): Promise<vscode.Color | undefined> {
-		// 加载图片
-		try {
-			const image = sharp(imagePath);
-
-			// 获取原始像素缓冲区
-			const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
-
-
-			// 假设图片是RGB格式（如果不是，可能需要根据info.channels进行调整）
-			const width = info.width;
-			const height = info.height;
-			const channels = info.channels; // 通常是3（RGB）
-
-			let rTotal: number = 0, gTotal: number = 0, bTotal: number = 0;
-			let pixelCount: number = 0;
-
-			for (let y = 0; y < height; y++) {
-				for (let x = 0; x < width; x++) {
-
-					// 计算索引
-					const index = (y * width + x) * channels;
-					// 提取RGB值
-					const r = data[index];
-					const g = data[index + 1];
-					const b = data[index + 2];
-					const a = data[index + 3];
-
-					if ((Math.abs(125 - r) > 20 || Math.abs(125 - g) > 20 || Math.abs(125 - b) > 20)) {
-						rTotal += r;
-						gTotal += g;
-						bTotal += b;
-						pixelCount++;
-					}
-				}
-			}
-			const rAverage = rTotal / pixelCount;
-			const gAverage = gTotal / pixelCount;
-			const bAverage = bTotal / pixelCount;
-			return new vscode.Color(Math.round(rAverage), Math.round(gAverage), Math.round(bAverage), 255);
-		} catch (error) {
-			MyLog.getInstance().error(`getThemeColors:${error}`);
-			return undefined;
-		}
-	}
-
-	function getInvertdColor(color: vscode.Color): vscode.Color {
-		return new vscode.Color(
-			(255 - color.red),
-			(255 - color.green),
-			(255 - color.blue),
-			(color.alpha),
-		);
-	}
-
-	function getCurrentEditorFontSize(): number {
-		const config = vscode.workspace.getConfiguration('editor');
-		return config.get<number>('fontSize') || 14;
-	}
-
-	function triggerUpdateDecorations(textEditor: vscode.TextEditor | undefined, throttle = false) {
-		MyLog.getInstance().info(`triggerUpdateDecorations`);
-		if (timeout) {
-			clearTimeout(timeout);
-			timeout = undefined;
-		}
-		if (throttle) {
-			timeout = setTimeout(() => {
-				updateDecorations(textEditor);
-			}, 1000);
-		} else {
-			updateDecorations(textEditor);
-		}
-	}
-
-	const activeEditor = vscode.window.activeTextEditor;
-	if (activeEditor && canUpdate(activeEditor.document)) {
-		triggerUpdateDecorations(activeEditor);
-	}
-
-	vscode.window.onDidChangeActiveTextEditor(editor => {
-		if (editor && canUpdate(editor.document)) {
-			MyLog.getInstance().info('onDidChangeActiveTextEditor!');
-			triggerUpdateDecorations(editor);
-		}
-	}, null, context.subscriptions);
-
-
-	//todo
-	const schemes: string[] = [];
-	vscode.workspace.onDidChangeTextDocument(event => {
-
-		if (canUpdate(event.document)) {
-			MyLog.getInstance().info(`onDidChangeTextDocument`);
-			const activeEditor = vscode.window.activeTextEditor;
-			if (activeEditor && event.document === activeEditor.document) {
-				triggerUpdateDecorations(activeEditor, true);
-			}
-		} else {
-			const curScheme = event.document.uri.scheme;
-			if (!schemes.includes(curScheme)) {
-				schemes.push(curScheme);
-				MyLog.getInstance().info(`scheme=${schemes.join(",")}`);
-			}
-		}
-
-	}, null, context.subscriptions);
 
 	const pathProvider = vscode.languages.registerCompletionItemProvider(
 		{ scheme: 'file', language: '*' }, {
@@ -377,23 +60,22 @@ export function activate(context: vscode.ExtensionContext) {
 					buildKeyWorkListFromFile(position, tipkeyWorkList, matchs3[1], "1");
 				}
 			}
-			MyLog.getInstance().info(`tipkeyWorkList=${tipkeyWorkList.length}`);
+			//MyLog.getInstance().info(`tipkeyWorkList=${tipkeyWorkList.length}`);
 			return tipkeyWorkList;
 		}
 	},
 		"/", "."
 	);
 
-	context.subscriptions.push(pathProvider);
+	context.subscriptions.push(changeConfigDisposable,pathProvider);
 
-	//是否可以更新
-	function canUpdate(document: vscode.TextDocument | undefined): boolean {
-		if (document === undefined) {
+	function getIsShowHiddenFiles() {
+		const isShowHiddenFiles = vscode.workspace.getConfiguration().get<boolean>("path-completion.is_show_hidden_files");
+		if (isShowHiddenFiles === undefined) {
 			return false;
 		}
-		return document.uri.scheme === 'file';
+		return isShowHiddenFiles;
 	}
-
 
 	function buildKeyWorkListFromWorkSpace(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], pathSuffix: string, sortText: string) {
 		vscode.workspace.workspaceFolders?.forEach(folder => {
@@ -405,7 +87,11 @@ export function activate(context: vscode.ExtensionContext) {
 	function buildKeyWorkListFromFile(position: vscode.Position, tipkeyWorkList: vscode.CompletionItem[], completionPath: string, sortText: string) {
 		if (fs.existsSync(completionPath)) {
 			const childs = fs.readdirSync(completionPath);
-			childs.forEach(element => {
+			for (const index in childs) {
+				const element = childs[index];
+				if ((!isShowHiddenFiles) && element.startsWith(".")) {
+					continue;
+				}
 				const itemPath = path.join(completionPath, element);
 				if (fs.existsSync(itemPath)) {
 					const itemStat = fs.statSync(itemPath);
@@ -420,7 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
 					completionItem.detail = itemPath;
 					tipkeyWorkList.push(completionItem);
 				}
-			});
+			}
 		}
 	}
 
@@ -435,7 +121,6 @@ export function activate(context: vscode.ExtensionContext) {
 				const completionPath = path.join(folder.uri.fsPath, pathSuffix);
 				buildKeyWorkListFromFileSuffix(position, tipkeyWorkList, completionPath, sortText);
 			}
-
 		});
 	}
 
@@ -445,7 +130,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 		if (fs.existsSync(curDir)) {
 			const childs = fs.readdirSync(curDir);
-			childs.forEach(element => {
+			for (const index in childs) {
+				const element = childs[index];
+				if ((!isShowHiddenFiles) && element.startsWith(".")) {
+					continue;
+				}
 				const itemPath = path.join(curDir, element);
 				if (fs.existsSync(itemPath)) {
 
@@ -464,26 +153,12 @@ export function activate(context: vscode.ExtensionContext) {
 					tipkeyWorkList.push(completionItem);
 
 				}
-			});
+			}
+
 		}
 	}
 }
 
 export function deactivate() {
-	MyLog.getInstance().info('path-completion is now deactivate!');
-	fileMd5Map.clear();
-	if (timeout) {
-		clearTimeout(timeout);
-		timeout = undefined;
-	}
-}
-
-
-
-interface ImageInfo {
-	md5: string;
-	path: string;
-	height: number | undefined;
-	width: number | undefined;
-
+	//MyLog.getInstance().info('path-completion is now deactivate!');
 }

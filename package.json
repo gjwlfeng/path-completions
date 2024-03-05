@@ -21,6 +21,18 @@
 	],
 
 	"main": "./out/extension.js",
+	"contributes": {
+		"configuration": {
+			"title": "Path Completion",
+			"properties": {
+			  "path-completion.is_show_hidden_files": {
+				"type": "boolean",
+				"default": false,
+				"description": "%path-completion.is_show_hidden_files_desc%"
+			  }
+			}
+		  }
+	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
@@ -37,7 +49,6 @@
 		"typescript": "^5.2.2"
 	},
 	"dependencies": {
-		"crypto-js": "^4.2.0",
-		"sharp": "^0.33.2"
+		
 	}
 }
